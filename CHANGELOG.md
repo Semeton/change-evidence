@@ -8,6 +8,7 @@
 - `suggest`: drafts a `.change-evidence.json` from the repository. It proposes a size threshold from the repo's own merged-PR sizes (only loosened unless `--budget` is given), policy and middleware folders the defaults miss, global scopes (tenant isolation goes to high, along with `withoutGlobalScope`) and payment code. `--write` saves it.
 - `upgrade`: moves the workflow's pinned version to the latest release (or `--to`). A workflow that is an unmodified copy of any shipped template (`templates/history.json`) is refreshed whole; an edited one only gets its pin moved. `--check` exits 1 when out of date.
 - Update notice on local runs: at most once a day, checked in a detached background process, never in CI, never installs anything; off with `CHANGE_EVIDENCE_NO_UPDATE_CHECK=1` or `NO_UPDATE_NOTIFIER=1`.
+- `init` pins the version that printed it (it printed the template's literal `0.1.0` before).
 - `-v`/`--version`/`version`, `-h`/`--help`/`help`, `--flag=value`, and a clear error for unknown commands.
 - Policy v3: policies, middleware and migrations are matched in modular layouts (`app/Modules/*`, nwidart `Modules/*`); globs support `[Dd]` character classes.
 - `suggest` finds scope classes portably: git narrows candidates, the match runs in JavaScript (git's `-E` regex has no `\b` on macOS, so scope classes were missed there).
