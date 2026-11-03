@@ -1,6 +1,6 @@
 {
   "name": "@semeton/change-evidence",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Change evidence for pull requests: reads what a PR changes in routes, schema, dependencies and CI as data, assigns a risk tier from a policy, and reports where a reviewer should look. Includes an offline study mode that replays a repository's merged PRs.",
   "bin": {
     "change-evidence": "bin/change-evidence.js"
