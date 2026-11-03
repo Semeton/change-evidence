@@ -114,3 +114,9 @@ test("the update notice uses the daily cache, and never runs in CI or when turne
     else process.env.XDG_CACHE_HOME = prev;
   }
 });
+
+test("init pins the version that printed it", () => {
+  const out = run(["init"]).stdout;
+  assert.match(out, new RegExp(`CHANGE_EVIDENCE: "@semeton/change-evidence@${VERSION.replace(/\./g, "\\.")}"`));
+  assert.ok(update.knownTemplates().includes(update.templateHash(out)), "still recognised as the stock template");
+});
