@@ -26,26 +26,54 @@ It needs `pull-requests: write` for the comment and nothing else. Every Action i
 
 Don't add a step that checks out or runs the PR head to this workflow. `pull_request_target` is safe here only because nothing from the PR executes.
 
-### Repository overlay
+### Repository overlay (optional)
 
-A repo can extend the built-in policy with `.change-evidence.json` at its root:
+The defaults work without any setup. They cover standard Laravel locations and modular layouts: `app/Modules/*`, and nwidart's `Modules/*`, for policies, middleware, routes and migrations. An overlay is for what only your repository knows: where your tenant boundary is, where money moves, and a review budget that fits your PR sizes. `suggest` drafts one from the repository itself:
+
+```bash
+npx @semeton/change-evidence suggest            # print a proposed .change-evidence.json
+npx @semeton/change-evidence suggest --write    # save it; review it, commit it in its own PR
+```
+
+`suggest` looks for four things:
+
+- **Size**: a threshold from your own merged PRs. It only loosens a default that flags more than `--budget` (default 0.2) of your PRs. Pass `--budget` to tighten it as well.
+- **Folders**: policy and middleware folders the defaults don't reach (for example `src/`).
+- **Global scopes**: the scope classes and the files that register them. When they look like tenant isolation, both they and `withoutGlobalScope` calls become high.
+- **Money**: payment and billing folders, at medium.
+
+How an overlay is applied:
 
 - Rules merge by `id`; an overlay rule replaces the built-in rule with the same id.
 - `disable` removes rules by id; `size` sets your own thresholds.
+- The overlay is read from the **base branch tip**, never from the PR, and a PR that edits it is itself trust-root high.
 
-The overlay is read from the **base branch tip**, never from the PR, and a PR that edits the overlay is itself trust-root high. `examples/lawyering.change-evidence.json` is a worked example for a multi-tenant app with a modular layout. It covers:
+`examples/lawyering.change-evidence.json` is `suggest`'s output for a multi-tenant app, after review.
 
-- tenant-scope bypass and changes to the tenant scope itself, at high;
-- policies and middleware under `app/Modules/*`;
-- a payments area;
-- a size threshold set from the repo's own PR sizes.
+### Keeping current
+
+The workflow pins an exact evaluator version on purpose. With `@latest`, whoever publishes the next version could change your trust root without a review. Upgrades are a reviewed change instead:
+
+```bash
+npx @semeton/change-evidence@latest upgrade          # move the pin; refresh the workflow if it's the stock template
+npx @semeton/change-evidence@latest upgrade --check  # exit 1 if a newer version exists (no write)
+```
+
+If your workflow is an unmodified copy of a template this package has shipped, `upgrade` replaces it with the current template, so new Action SHAs and steps arrive with the version. If you've edited it, only the pin moves. Commit the result in its own PR.
+
+Run locally, the CLI also prints a notice when a newer version exists. It checks at most once a day in a background process, never in CI, and never installs anything. Turn it off with `CHANGE_EVIDENCE_NO_UPDATE_CHECK=1` (or `NO_UPDATE_NOTIFIER=1`).
 
 ## Usage
 
 ```bash
 npx @semeton/change-evidence pr path/to/repo --base <base-sha> --head <head-sha> --out ce/ [--github] [--fail-on high]
+npx @semeton/change-evidence init                      # print the shadow-mode workflow
+npx @semeton/change-evidence suggest [repo] [--budget 0.2] [--write]
+npx @semeton/change-evidence upgrade [repo] [--to VERSION] [--check]
 npx @semeton/change-evidence study path/to/repo --out study/ [--since 2025-01-01] [--limit 500] [--followup-days 14]
 npx @semeton/change-evidence change path/to/repo <base-sha> <head-sha>   # raw JSON for one diff
+npx @semeton/change-evidence --version   # or -v
+npx @semeton/change-evidence --help      # or -h
 ```
 
 `pr` diffs from the merge base and writes `report.md` and `evidence.json`. It exits 0 unless `--fail-on` is given; that flag is for later phases, once the study numbers justify blocking.
