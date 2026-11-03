@@ -103,7 +103,9 @@ async function main(argv) {
   }
 
   if (cmd === "init") {
-    process.stdout.write(fs.readFileSync(path.join(__dirname, "..", "templates", "change-evidence.yml"), "utf8"));
+    // Pin the version that printed it, whatever the template file says.
+    const template = fs.readFileSync(path.join(__dirname, "..", "templates", "change-evidence.yml"), "utf8");
+    process.stdout.write(template.replace(update.PIN, `$1${VERSION}`));
     return 0;
   }
 
