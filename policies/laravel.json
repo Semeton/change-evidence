@@ -1,7 +1,7 @@
 {
   "name": "laravel-default",
-  "version": 2,
-  "description": "Default risk policy for Laravel applications. Rules only escalate; nothing here lowers a tier. Pattern rules over diff lines are heuristics and are labelled as such in results.",
+  "version": 3,
+  "description": "Default risk policy for Laravel applications. Rules only escalate; nothing here lowers a tier. Pattern rules over diff lines are heuristics and are labelled as such in results. Policies, middleware, routes and migrations are matched in standard locations and in modular layouts (app/Modules/*, nwidart Modules/*).",
   "tiers": [
     "low",
     "medium",
@@ -41,7 +41,9 @@
       "dimension": "security",
       "level": "medium",
       "paths": [
-        "app/Http/Middleware/**"
+        "app/Http/Middleware/**",
+        "app/**/Middleware/**",
+        "Modules/**/Middleware/**"
       ]
     },
     {
@@ -50,6 +52,8 @@
       "level": "medium",
       "paths": [
         "app/Policies/**",
+        "app/**/Policies/**",
+        "Modules/**/Policies/**",
         "app/Providers/AuthServiceProvider.php"
       ]
     },
@@ -58,7 +62,9 @@
       "dimension": "data",
       "level": "low",
       "paths": [
-        "database/migrations/**"
+        "database/migrations/**",
+        "Modules/**/[Dd]atabase/[Mm]igrations/**",
+        "app/Modules/**/[Dd]atabase/[Mm]igrations/**"
       ]
     },
     {

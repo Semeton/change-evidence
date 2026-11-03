@@ -27,7 +27,13 @@ Route::prefix('api')->middleware('api')->group(static function (): void {
 
 test("parses nested groups, array groups, conditionals and trailing middleware", () => {
   const r = parseRoutes(SRC, "routes/api.php");
-  const get = (k) => r.routes.get(k);
+  const get = (k) => {
+    const v = r.routes.get(k);
+    if (!v) return v;
+    const { file, ...rest } = v;
+    assert.equal(file, "routes/api.php");
+    return rest;
+  };
   assert.deepEqual(get("GET /api/ping"), { action: "closure", middleware: ["api"] });
   assert.deepEqual(get("POST /api/users"), { action: "UserController@store", middleware: ["AdminOnly", "api", "auth"], name: "users.store" });
   assert.ok(get("APIRESOURCE /api/songs"));
@@ -36,7 +42,7 @@ test("parses nested groups, array groups, conditionals and trailing middleware",
   assert.deepEqual(get("POST /api/ai").middleware, ["api", "throttle:10,1"]);
   assert.equal(r.unknown.length, 2);
   assert.match(r.unknown.join("\n"), /non-literal URI/);
-  assert.match(r.unknown.join("\n"), /loads routes from elsewhere/);
+  assert.match(r.unknown.join("\n"), /routes loaded from routes\/other\.php, which could not be read/);
 });
 
 test("extractRoutes diffs routes and flags removed auth middleware", () => {
@@ -69,4 +75,43 @@ test("a new route behind throttle alone is unauthenticated", () => {
   const risk = Object.fromEntries(r.observed.map((o) => [o.key, o.risk]));
   assert.equal(risk["GET /i/{token}"], "unauthenticated_route");
   assert.equal(risk["GET /me"], undefined);
+});
+
+test("included route files inherit the including group's middleware", () => {
+  const files = {
+    "routes/web.php": `<?php
+Route::middleware('auth')->prefix('app')->group(function () {
+    require __DIR__.'/modules/billing.php';
+});
+Route::middleware('api')->group(base_path('routes/hooks.php'));
+require __DIR__.'/public.php';
+`,
+    "routes/modules/billing.php": "<?php\nRoute::get('invoices', Invoices::class);\n",
+    "routes/hooks.php": "<?php\nRoute::post('stripe', Stripe::class);\n",
+    "routes/public.php": "<?php\nRoute::get('i/{token}', Show::class);\n",
+  };
+  const included = new Set();
+  const r = parseRoutes(files["routes/web.php"], "routes/web.php", { resolve: (f) => files[f] ?? null, included });
+  assert.deepEqual(r.unknown, []);
+  assert.deepEqual(r.routes.get("GET /app/invoices").middleware, ["auth"]);
+  assert.equal(r.routes.get("GET /app/invoices").file, "routes/modules/billing.php");
+  assert.deepEqual(r.routes.get("POST /stripe").middleware, ["api"]);
+  assert.deepEqual(r.routes.get("GET /i/{token}").middleware, []);
+  assert.deepEqual([...included].sort(), ["routes/hooks.php", "routes/modules/billing.php", "routes/public.php"]);
+});
+
+test("extractRoutes: an included file is judged in its including group, and module routes aren't called unauthenticated", () => {
+  const t = repo();
+  const web = "<?php\nRoute::middleware('auth')->group(function () {\n  require __DIR__.'/modules/billing.php';\n});\n";
+  const base = t.commit("init", { "routes/web.php": web, "routes/modules/billing.php": "<?php\nRoute::get('a', A::class);\n" });
+  const head = t.commit("x", {
+    "routes/modules/billing.php": "<?php\nRoute::get('a', A::class);\nRoute::post('b', B::class);\n",
+    "Modules/Blog/routes/web.php": "<?php\nRoute::get('posts', Posts::class);\n",
+  });
+  const r = extractRoutes({ cwd: t.dir, base, head, changed: changedFiles(t.dir, base, head) });
+  const by = Object.fromEntries(r.observed.map((o) => [o.key, o]));
+  assert.equal(by["POST /b"].risk, undefined, "inherits auth from web.php");
+  assert.ok(!by["GET /a"], "unchanged route isn't reported");
+  assert.equal(by["GET /posts"].risk, undefined);
+  assert.match(by["GET /posts"].detail, /module provider/);
 });

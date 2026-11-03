@@ -4,13 +4,18 @@ const os = require("os");
 const path = require("path");
 const { execFileSync } = require("child_process");
 
-const ENV = { ...process.env, GIT_CONFIG_GLOBAL: os.devNull, GIT_CONFIG_NOSYSTEM: "1", GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };
+// An empty global config, so the developer's own git config (signing, hooks, prompts)
+// can't affect tests. A real empty file, not os.devNull: git on Windows can't open \\.\nul.
+const EMPTY_CONFIG = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "ce-gitcfg-")), "config");
+fs.writeFileSync(EMPTY_CONFIG, "");
+const NO_HOOKS = fs.mkdtempSync(path.join(os.tmpdir(), "ce-hooks-"));
+const ENV = { ...process.env, GIT_CONFIG_GLOBAL: EMPTY_CONFIG, GIT_CONFIG_NOSYSTEM: "1", GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };
 
 function repo() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ce-"));
   const g = (...a) => execFileSync("git", ["-C", dir, ...a], { env: ENV, encoding: "utf8", timeout: 20000 }).trim();
   g("init", "-q", "-b", "main");
-  g("config", "core.hooksPath", "/dev/null");
+  g("config", "core.hooksPath", NO_HOOKS);
   let day = 1;
   return {
     dir,
