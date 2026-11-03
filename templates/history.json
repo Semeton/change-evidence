@@ -1,0 +1,9 @@
+{
+  "_": "sha256 of each shipped workflow template, pin blanked. Append the new hash whenever templates/change-evidence.yml changes; a test enforces it.",
+  "templates": [
+    {
+      "since": "0.1.0",
+      "sha256": "33b1ca9c7e46aee87321bd094d843faa7d3a9c4135d84ede4cf39dbd638dc1fe"
+    }
+  ]
+}
