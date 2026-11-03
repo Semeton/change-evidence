@@ -60,3 +60,13 @@ test("an unreadable middleware is recorded as <dynamic>, not UNKNOWN", () => {
   assert.deepEqual(r.unknown, []);
   assert.deepEqual(r.routes.get("GET /a").middleware, ["<dynamic>", "auth"]);
 });
+
+test("a new route behind throttle alone is unauthenticated", () => {
+  const t = repo();
+  const base = t.commit("init", { "routes/web.php": "<?php\n" });
+  const head = t.commit("x", { "routes/web.php": "<?php\nRoute::get('i/{token}', Show::class)->middleware('throttle:60,1');\nRoute::get('me', Me::class)->middleware('auth');\n" });
+  const r = extractRoutes({ cwd: t.dir, base, head, changed: changedFiles(t.dir, base, head) });
+  const risk = Object.fromEntries(r.observed.map((o) => [o.key, o.risk]));
+  assert.equal(risk["GET /i/{token}"], "unauthenticated_route");
+  assert.equal(risk["GET /me"], undefined);
+});

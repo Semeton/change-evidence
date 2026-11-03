@@ -1,0 +1,14 @@
+{
+  "name": "lawyering",
+  "description": "Multi-tenant Laravel app with a modular layout (app/Modules/*). Tenant isolation is the highest-consequence invariant: TenantScope is added by BelongsToTenant, so bypassing it or changing it is high. Size is set from this repo's own PR distribution (median about 1,300 changed lines), so size alone doesn't route most PRs to a human; the evidence report says where to look.",
+  "size": { "max_changed_lines": 3500, "max_files": 80, "level": "medium" },
+  "path_rules": [
+    { "id": "tenant-isolation", "dimension": "security", "level": "high", "paths": ["app/Modules/Tenants/Scopes/**", "app/Concerns/BelongsToTenant.php"] },
+    { "id": "policies", "dimension": "security", "level": "medium", "paths": ["app/Policies/**", "app/Modules/*/Policies/**", "app/Providers/AuthServiceProvider.php"] },
+    { "id": "middleware", "dimension": "security", "level": "medium", "paths": ["app/Http/Middleware/**", "app/Modules/*/Middleware/**"] },
+    { "id": "payments", "dimension": "data", "level": "medium", "paths": ["app/Modules/Payments/**"] }
+  ],
+  "pattern_rules": [
+    { "id": "without-global-scope", "dimension": "security", "level": "high", "paths": ["app/**"], "added": "withoutGlobalScopes?\\s*\\(|withoutTenant|TenantScope::class" }
+  ]
+}

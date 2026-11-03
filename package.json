@@ -1,8 +1,7 @@
 {
   "name": "@semeton/change-evidence",
-  "version": "0.0.2",
-  "private": true,
-  "description": "Change evidence gate, phase 1: replay a repository's merged pull requests and report what each one changed, how risky it was, and what could not be established.",
+  "version": "0.1.0",
+  "description": "Change evidence for pull requests: reads what a PR changes in routes, schema, dependencies and CI as data, assigns a risk tier from a policy, and reports where a reviewer should look. Includes an offline study mode that replays a repository's merged PRs.",
   "bin": {
     "change-evidence": "bin/change-evidence.js"
   },
@@ -11,7 +10,40 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "prepublishOnly": "node --test"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "keywords": [
+    "code-review",
+    "pull-request",
+    "laravel",
+    "risk",
+    "ai-agents",
+    "ci",
+    "github-actions",
+    "supply-chain"
+  ],
+  "files": [
+    "bin/",
+    "lib/",
+    "policies/",
+    "templates/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Semeton/change-evidence.git"
+  },
+  "homepage": "https://github.com/Semeton/change-evidence#readme",
+  "bugs": {
+    "url": "https://github.com/Semeton/change-evidence/issues"
+  },
+  "author": "Semeton Balogun",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
 }

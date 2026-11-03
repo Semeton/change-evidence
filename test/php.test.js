@@ -25,3 +25,9 @@ test("chainCalls splits a fluent chain", () => {
   assert.deepEqual(c.map((x) => x.name), ["prefix", "middleware", "get"]);
   assert.deepEqual(c[2].args, ["'x'", "X::class"]);
 });
+
+test("staticConcat reads the middleware-parameter idiom", () => {
+  assert.equal(php.staticConcat("Ensure::class.':transfers'"), "Ensure:transfers");
+  assert.equal(php.staticConcat("$x.'a'"), null);
+  assert.deepEqual(php.listValues(["Ensure::class.':a'"]), { values: ["Ensure:a"], dynamic: 0 });
+});

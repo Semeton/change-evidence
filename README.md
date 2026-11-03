@@ -1,22 +1,60 @@
 # change-evidence
 
-Phase 1 of the change evidence gate: an offline study tool. It replays a repository's merged pull requests, extracts what each one changed structurally, assigns a risk tier from a policy, and joins every PR to what happened to it later. The question it answers is whether the tiers would route the right changes to a human, at a review load the team can carry, before anything is put in a merge path.
+Evidence for pull requests. It reads what a PR changes in routes, schema, dependencies and CI as data, assigns a risk tier from a policy, and reports where a reviewer should look. On a 3,000-line agent PR, the report says which four routes became public, which migration retypes a column, and which three files bypass tenant scoping.
 
-It is read-only. It reads git objects as data and never checks out, builds or runs the code it studies, so every piece of evidence it produces is *trusted* in the spec's sense.
+It never runs the code it judges. It reads git objects as data and never checks out, builds or executes the PR, so every piece of evidence it produces is *trusted* in the design spec's sense. Anything it can't establish is reported as UNKNOWN and raises the tier; it never counts as a pass.
+
+It has two modes:
+
+- **`pr`**: one pull request, as a PR comment and a GitHub step summary. Phase 0 of the gate: shadow mode, which reports and never blocks.
+- **`study`**: replays a repository's merged PRs offline and measures whether the tiers would have routed the right changes to a human. Phase 1: calibration before anything goes in a merge path.
+
+## Shadow mode on a GitHub repository
+
+```bash
+npx @semeton/change-evidence init > .github/workflows/change-evidence.yml
+```
+
+The workflow:
+
+- runs on `pull_request_target`, so it uses the workflow file **from the base branch**: a PR can't edit the check that judges it;
+- fetches the PR's commits as git objects only, with no checkout and no install;
+- runs a pinned evaluator version from outside the repository;
+- posts one comment per PR (updated on each push), writes the step summary, and keeps `evidence.json` as a 90-day artifact.
+
+It needs `pull-requests: write` for the comment and nothing else. Every Action it uses is pinned to a commit SHA.
+
+Don't add a step that checks out or runs the PR head to this workflow. `pull_request_target` is safe here only because nothing from the PR executes.
+
+### Repository overlay
+
+A repo can extend the built-in policy with `.change-evidence.json` at its root:
+
+- Rules merge by `id`; an overlay rule replaces the built-in rule with the same id.
+- `disable` removes rules by id; `size` sets your own thresholds.
+
+The overlay is read from the **base branch tip**, never from the PR, and a PR that edits the overlay is itself trust-root high. `examples/lawyering.change-evidence.json` is a worked example for a multi-tenant app with a modular layout. It covers:
+
+- tenant-scope bypass and changes to the tenant scope itself, at high;
+- policies and middleware under `app/Modules/*`;
+- a payments area;
+- a size threshold set from the repo's own PR sizes.
 
 ## Usage
 
 ```bash
-npx change-evidence study path/to/repo --out study/           # all merged PRs on HEAD
-npx change-evidence study path/to/repo --since 2025-01-01 --limit 500 --followup-days 14
-npx change-evidence change path/to/repo <base-sha> <head-sha>  # one change, as JSON
+npx @semeton/change-evidence pr path/to/repo --base <base-sha> --head <head-sha> --out ce/ [--github] [--fail-on high]
+npx @semeton/change-evidence study path/to/repo --out study/ [--since 2025-01-01] [--limit 500] [--followup-days 14]
+npx @semeton/change-evidence change path/to/repo <base-sha> <head-sha>   # raw JSON for one diff
 ```
+
+`pr` diffs from the merge base and writes `report.md` and `evidence.json`. It exits 0 unless `--fail-on` is given; that flag is for later phases, once the study numbers justify blocking.
 
 `study` writes three files:
 
-- `study.csv`: one row per PR, with tier, the tier per dimension, the rules that fired, route, schema and dependency counts, UNKNOWN extractors, and outcome labels.
+- `study.csv`: one row per PR, with tier, the tier per dimension, the rules that fired, route, schema, dependency and Action counts, UNKNOWN extractors, and outcome labels.
 - `study.json`: the full evidence, every rule hit, and the outcome links.
-- `summary.md`: tiers against outcomes, a size-only baseline, a size-controlled comparison, per-rule hit rates, extractor coverage, and misses.
+- `summary.md`: tiers against outcomes, a size-only baseline, a size-controlled comparison, a size-threshold sweep, per-rule hit rates, extractor coverage, and misses.
 
 PRs are recovered from git alone: squash merges ending `(#N)` and `Merge pull request #N` commits on the first-parent line. No GitHub API is used.
 

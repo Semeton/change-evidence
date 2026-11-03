@@ -40,3 +40,28 @@ test("end to end: reverts and SZZ fix follow-ups are linked", () => {
   assert.match(md, /### Controlling for size/);
   assert.match(md, /### Size threshold/);
 });
+
+test("cli: pr writes report.md and evidence.json and exits 0 in shadow mode", () => {
+  const { execFileSync } = require("child_process");
+  const fs = require("fs");
+  const path = require("path");
+  const t = repo();
+  const base = t.commit("init", { "a.txt": "a\n" });
+  t.g("checkout", "-q", "-b", "feature");
+  const head = t.commit("change", { ".github/workflows/ci.yml": "on: push\n" });
+  const out = fs.mkdtempSync(path.join(require("os").tmpdir(), "ce-out-"));
+  const bin = path.join(__dirname, "..", "bin", "change-evidence.js");
+  execFileSync(process.execPath, [bin, "pr", t.dir, "--base", base, "--head", head, "--out", out], { encoding: "utf8" });
+  const j = JSON.parse(fs.readFileSync(path.join(out, "evidence.json"), "utf8"));
+  assert.equal(j.risk.tier, "high");
+  assert.equal(j.mode, "shadow");
+  assert.match(fs.readFileSync(path.join(out, "report.md"), "utf8"), /Trust root \(high\)/);
+  let code = 0;
+  try {
+    execFileSync(process.execPath, [bin, "pr", t.dir, "--base", base, "--head", head, "--out", out, "--fail-on", "high"], { stdio: "ignore" });
+  } catch (e) {
+    code = e.status;
+  }
+  assert.equal(code, 1);
+  assert.match(execFileSync(process.execPath, [bin, "init"], { encoding: "utf8" }), /pull_request_target/);
+});
