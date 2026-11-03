@@ -26,6 +26,7 @@ PRs are recovered from git alone: squash merges ending `(#N)` and `Merge pull re
 |---|---|---|---|
 | routes | `routes/**/*.php`, statically | added, removed and changed routes, each with its full URI, action and accumulated middleware; follows `prefix/middleware/name()->group()` and `Route::group([...])` nesting; marks routes inside `if` blocks as conditional | a non-literal URI, a group loaded from another file, a dynamic prefix or domain |
 | migrations | `up()` of added or changed migrations | tables created, dropped and renamed; columns added (NOT NULL without a default on an existing table is flagged), dropped, renamed and retyped; indexes; data migrations; edits to an already-shipped migration | raw SQL, non-literal table names, helper calls it can't follow |
+| workflows | `.github/workflows`, `.github/actions` | each Action added, removed or re-pinned (old → new ref, SHA-pinned or not), and how many non-`uses:` lines changed | — |
 | dependencies | composer.lock, pnpm-lock.yaml (v5–9), yarn.lock (v1 and berry), package-lock.json (v1–3) | direct dependencies added, removed, upgraded (major flagged) and downgraded; install scripts; transitive changes as counts | a manifest's constraints changed without its lockfile |
 
 Routes registered by service providers or packages are outside coverage, and the results say so.
@@ -48,30 +49,38 @@ Both labels are proxies.
 - **reverted**: a later commit on the main line reverts the PR, matched by "This reverts commit <sha>", by a `#N` reference, or by the reverted title.
 - **fix_followup**: a later `fix` PR within the window deletes or modifies lines this PR introduced (SZZ: `git blame -w` on the fix's base, test and lock files excluded). It misses fixes that only add lines and fixes not typed `fix`.
 
-## First result: Koel
+## Results: two Laravel repositories
 
-[koel/koel](https://github.com/koel/koel): 1,392 merged PRs from 2015 to 2026, replayed in about 80 seconds.
+Policy v2, all merged PRs recovered from history. Bad outcome means reverted or SZZ-linked to a later `fix` PR within 14 days.
 
-| Tier | PRs | Bad-outcome proxy |
+| | [koel/koel](https://github.com/koel/koel) | [monicahq/monica](https://github.com/monicahq/monica) |
 |---|---:|---:|
-| low | 73.6% | 5.9% |
-| medium | 18.2% | 17.8% |
-| high | 8.2% | 16.7% |
+| PRs, period | 1,392, 2015–2026 | 445, 2023–2026 |
+| Mix | feat/fix, one main author | 58% bot dependency PRs |
+| Bad-outcome base rate | 8.9% | 3.8% |
+| Low tier: share / bad rate | 73% / 5.9% | 74% / 0.6% |
+| Medium + high: review load / capture | 27% / 52% | 26% / 88% |
+| Same load by size alone: capture | 66% | 82% |
+| Replay time | ~100 s | ~40 s |
 
-- **The tiers concentrate trouble.** Medium and high PRs fail at three times the rate of low ones. Routing 26% of PRs to a human catches 52% of the PRs that later needed a fix or a revert.
-- **Size alone does better on that yardstick.** Flagging the same number of PRs by size catches 66%.
-- **Controlling for size, the non-size rules add little.** Below 800 changed lines, PRs flagged by a non-size rule fail at the same rate as unflagged PRs of the same size. Only in the largest band does the flag separate them, at 42% against 21%. On a defect proxy, the static rules mostly rediscover size.
-- **That isn't their only job.** Security, data and trust-root rules route changes by consequence, not by the likelihood of a bug. Editing a shipped migration (#2534), changing CI or loosening mass assignment needs a human whether or not it later gets "fixed". The defect proxy can't validate those rules; it can only tell you what they cost.
-- **The misses are informative.** Two reverted StyleCI auto-fix PRs and one index refactor (#2511) were low tier. Index changes inside an existing table are reported but don't escalate. That's a candidate rule, to be tested before it's added.
-- **One rule is noisy enough to fix.** The `http-kernel` path rule fires on every `bootstrap/app.php` edit (23 PRs). In Laravel 11+ that file holds routing, exceptions and middleware together. It should become a pattern rule over the middleware and CSRF calls.
-- **Coverage.** Routes were UNKNOWN in 1% of the PRs that touched them, dependencies in 1.4%. Migrations were UNKNOWN in 14%, mostly raw SQL, config-driven table names (spatie/permission) and data-migration helpers. Those are the right things to be UNKNOWN about.
+What holds across both:
 
-Next, in Phase 1:
+- **The low tier is safe to skim.** Three quarters of PRs land there, and they carry a third (Koel) to a tenth (Monica) of the bad-outcome rate of the flagged ones.
+- **Size is the strongest single signal, and the size threshold is a budget choice.** Precision stays flat from 250 to 2,000 lines (about 17% on Koel, 12% on Monica). Lowering the threshold buys capture at the same hit rate. `summary.md` prints the sweep, so each team can pick its own point.
 
-- calibrate `http-kernel` and size against this data;
-- add an index-change rule and measure it;
-- run a second pilot repository, because one repository's history is one sample;
-- record per-rule cost (review load) next to per-rule yield, so each rule earns its place.
+What doesn't hold:
+
+- **Whether the other rules add anything beyond size.** On Koel, flagged and unflagged PRs of the same size fail at the same rate below 800 lines. On Monica the flagged ones fail more in every band under 250 lines, but that rests on 5 bad PRs. Two samples, two answers: this stays open until a third repository or a larger window.
+
+Calibration from v1 to v2, each change measured before it was kept:
+
+- `bootstrap/app.php` became a pattern rule over middleware and CSRF calls. Koel hits dropped from 23 to 3, all three real middleware changes.
+- `index_change_existing_table` (medium): 28 Koel PRs at a 25% bad rate against an 8.9% base. It now catches #2511, a revert that v1 missed.
+- Parser fixes: PHP method names are case-insensitive (`$table->datetime()`), and an unreadable middleware entry is recorded as `<dynamic>` instead of making every route under it UNKNOWN. Monica's route UNKNOWN rate went from 29% to 0%.
+
+The trust-root cost is the CI rule. On Monica, 43 of 59 high-tier PRs are high because of the CI rule alone, and 21 of those only move `uses:` refs. The tier stays high: an Action version bump is a supply-chain change. Instead, the workflow extractor makes the review a glance. It lists each Action whose ref moved, from which ref to which, and whether the new ref is pinned to a SHA. `workflow_only_action_bumps` in the CSV marks PRs that change nothing else. Between them, the two repositories introduced 38 unpinned Action refs.
+
+The consequence rules (security, data, trust root) aren't meant to predict bugs. A defect proxy can show what they cost in review load, not whether they're right; #2534, an edit to a migration that had already shipped, is the kind of change they exist for.
 
 ## Development
 

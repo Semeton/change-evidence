@@ -1,54 +1,315 @@
 {
   "name": "laravel-default",
-  "version": 1,
+  "version": 2,
   "description": "Default risk policy for Laravel applications. Rules only escalate; nothing here lowers a tier. Pattern rules over diff lines are heuristics and are labelled as such in results.",
-  "tiers": ["low", "medium", "high"],
+  "tiers": [
+    "low",
+    "medium",
+    "high"
+  ],
   "on_unknown": "medium",
-  "size": { "max_changed_lines": 800, "max_files": 40, "level": "medium" },
+  "size": {
+    "max_changed_lines": 800,
+    "max_files": 40,
+    "level": "medium"
+  },
   "path_rules": [
-    { "id": "auth-config", "dimension": "security", "level": "high", "paths": ["config/auth.php", "config/sanctum.php", "config/cors.php", "config/session.php", "config/permission.php", "config/fortify.php", "config/passport.php"] },
-    { "id": "http-kernel", "dimension": "security", "level": "high", "paths": ["app/Http/Kernel.php", "bootstrap/app.php"] },
-    { "id": "middleware", "dimension": "security", "level": "medium", "paths": ["app/Http/Middleware/**"] },
-    { "id": "policies", "dimension": "security", "level": "medium", "paths": ["app/Policies/**", "app/Providers/AuthServiceProvider.php"] },
-    { "id": "migrations-any", "dimension": "data", "level": "low", "paths": ["database/migrations/**"] },
-    { "id": "infra", "dimension": "operational", "level": "medium", "paths": ["Dockerfile*", "docker-compose*", "docker/**", ".env.example", "config/queue.php", "config/database.php", "config/cache.php", "config/filesystems.php", "app/Console/Kernel.php", "routes/console.php", "config/horizon.php", "config/broadcasting.php", "config/reverb.php"] },
-    { "id": "ci", "dimension": "trust_root", "level": "high", "paths": [".github/workflows/**", ".github/actions/**", ".github/CODEOWNERS", "CODEOWNERS"] },
-    { "id": "test-harness", "dimension": "trust_root", "level": "high", "paths": ["phpunit.xml", "phpunit.xml.dist", "tests/TestCase.php", "tests/CreatesApplication.php", "tests/bootstrap.php", "tests/Pest.php"] },
-    { "id": "static-analysis-config", "dimension": "trust_root", "level": "medium", "paths": ["phpstan.neon", "phpstan.neon.dist", "phpstan-baseline.neon", "psalm.xml", "psalm-baseline.xml", "pint.json", "vitest.config.*", "vite.config.*"] }
+    {
+      "id": "auth-config",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "config/auth.php",
+        "config/sanctum.php",
+        "config/cors.php",
+        "config/session.php",
+        "config/permission.php",
+        "config/fortify.php",
+        "config/passport.php"
+      ]
+    },
+    {
+      "id": "http-kernel",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "app/Http/Kernel.php"
+      ]
+    },
+    {
+      "id": "middleware",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "app/Http/Middleware/**"
+      ]
+    },
+    {
+      "id": "policies",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "app/Policies/**",
+        "app/Providers/AuthServiceProvider.php"
+      ]
+    },
+    {
+      "id": "migrations-any",
+      "dimension": "data",
+      "level": "low",
+      "paths": [
+        "database/migrations/**"
+      ]
+    },
+    {
+      "id": "infra",
+      "dimension": "operational",
+      "level": "medium",
+      "paths": [
+        "Dockerfile*",
+        "docker-compose*",
+        "docker/**",
+        ".env.example",
+        "config/queue.php",
+        "config/database.php",
+        "config/cache.php",
+        "config/filesystems.php",
+        "app/Console/Kernel.php",
+        "routes/console.php",
+        "config/horizon.php",
+        "config/broadcasting.php",
+        "config/reverb.php"
+      ]
+    },
+    {
+      "id": "ci",
+      "dimension": "trust_root",
+      "level": "high",
+      "paths": [
+        ".github/workflows/**",
+        ".github/actions/**",
+        ".github/CODEOWNERS",
+        "CODEOWNERS"
+      ]
+    },
+    {
+      "id": "test-harness",
+      "dimension": "trust_root",
+      "level": "high",
+      "paths": [
+        "phpunit.xml",
+        "phpunit.xml.dist",
+        "tests/TestCase.php",
+        "tests/CreatesApplication.php",
+        "tests/bootstrap.php",
+        "tests/Pest.php"
+      ]
+    },
+    {
+      "id": "static-analysis-config",
+      "dimension": "trust_root",
+      "level": "medium",
+      "paths": [
+        "phpstan.neon",
+        "phpstan.neon.dist",
+        "phpstan-baseline.neon",
+        "psalm.xml",
+        "psalm-baseline.xml",
+        "pint.json",
+        "vitest.config.*",
+        "vite.config.*"
+      ]
+    }
   ],
   "deleted_path_rules": [
-    { "id": "tests-deleted", "dimension": "trust_root", "level": "medium", "paths": ["tests/**"] }
+    {
+      "id": "tests-deleted",
+      "dimension": "trust_root",
+      "level": "medium",
+      "paths": [
+        "tests/**"
+      ]
+    }
   ],
   "pattern_rules": [
-    { "id": "without-middleware", "dimension": "security", "level": "high", "paths": ["app/**", "routes/**"], "added": "withoutMiddleware\\s*\\(" },
-    { "id": "without-global-scope", "dimension": "security", "level": "medium", "paths": ["app/**"], "added": "withoutGlobalScopes?\\s*\\(" },
-    { "id": "mass-assignment-open", "dimension": "security", "level": "high", "paths": ["app/**"], "added": "\\$guarded\\s*=\\s*\\[\\s*\\]|Model::unguard\\s*\\(" },
-    { "id": "raw-sql", "dimension": "security", "level": "medium", "paths": ["app/**"], "added": "\\b(whereRaw|selectRaw|orderByRaw|havingRaw|groupByRaw)\\s*\\(|DB::(raw|statement|unprepared|select)\\s*\\(" },
-    { "id": "unescaped-blade", "dimension": "security", "level": "medium", "paths": ["resources/views/**"], "added": "\\{!!" },
-    { "id": "gate-before", "dimension": "security", "level": "high", "paths": ["app/**"], "added": "Gate::before\\s*\\(" },
-    { "id": "csrf-except", "dimension": "security", "level": "high", "paths": ["app/**", "bootstrap/app.php"], "added": "validateCsrfTokens\\s*\\(\\s*except|protected\\s+\\$except" },
-    { "id": "authorization-removed", "dimension": "security", "level": "high", "paths": ["app/**"], "removed": "->authorize\\s*\\(|Gate::(authorize|allows|denies)\\s*\\(|->can\\s*\\(|\\$this->authorize" },
-    { "id": "test-skipped", "dimension": "trust_root", "level": "medium", "paths": ["tests/**"], "added": "markTestSkipped|->skip\\s*\\(|@group\\s+skip|#\\[Group\\('skip" },
-    { "id": "assertion-removed", "dimension": "trust_root", "level": "low", "paths": ["tests/**"], "removed": "\\$this->assert|->assert[A-Z]|expect\\(" }
+    {
+      "id": "bootstrap-middleware",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "bootstrap/app.php"
+      ],
+      "added": "->(middleware|withMiddleware|validateCsrfTokens|encryptCookies|trustProxies|trustHosts|statefulApi|throttleApi|redirectGuestsTo|redirectUsersTo|alias|group|web|api|append|prepend|remove|replace)\\s*\\(|withMiddleware\\s*\\(",
+      "removed": "->(validateCsrfTokens|encryptCookies|trustProxies|trustHosts|statefulApi|throttleApi|redirectGuestsTo|alias|web|api|append|prepend)\\s*\\("
+    },
+    {
+      "id": "without-middleware",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "app/**",
+        "routes/**"
+      ],
+      "added": "withoutMiddleware\\s*\\("
+    },
+    {
+      "id": "without-global-scope",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "app/**"
+      ],
+      "added": "withoutGlobalScopes?\\s*\\("
+    },
+    {
+      "id": "mass-assignment-open",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "app/**"
+      ],
+      "added": "\\$guarded\\s*=\\s*\\[\\s*\\]|Model::unguard\\s*\\("
+    },
+    {
+      "id": "raw-sql",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "app/**"
+      ],
+      "added": "\\b(whereRaw|selectRaw|orderByRaw|havingRaw|groupByRaw)\\s*\\(|DB::(raw|statement|unprepared|select)\\s*\\("
+    },
+    {
+      "id": "unescaped-blade",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "resources/views/**"
+      ],
+      "added": "\\{!!"
+    },
+    {
+      "id": "gate-before",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "app/**"
+      ],
+      "added": "Gate::before\\s*\\("
+    },
+    {
+      "id": "csrf-except",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "app/**",
+        "bootstrap/app.php"
+      ],
+      "added": "validateCsrfTokens\\s*\\(\\s*except|protected\\s+\\$except"
+    },
+    {
+      "id": "authorization-removed",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "app/**"
+      ],
+      "removed": "->authorize\\s*\\(|Gate::(authorize|allows|denies)\\s*\\(|->can\\s*\\(|\\$this->authorize"
+    },
+    {
+      "id": "test-skipped",
+      "dimension": "trust_root",
+      "level": "medium",
+      "paths": [
+        "tests/**"
+      ],
+      "added": "markTestSkipped|->skip\\s*\\(|@group\\s+skip|#\\[Group\\('skip"
+    },
+    {
+      "id": "assertion-removed",
+      "dimension": "trust_root",
+      "level": "low",
+      "paths": [
+        "tests/**"
+      ],
+      "removed": "\\$this->assert|->assert[A-Z]|expect\\("
+    }
   ],
   "evidence_rules": {
-    "security_middleware_removed": { "dimension": "security", "level": "high" },
-    "unauthenticated_route": { "dimension": "security", "level": "medium", "heuristic": true },
-    "middleware_changed": { "dimension": "security", "level": "medium" },
-    "destructive": { "dimension": "data", "level": "high" },
-    "migration_edited": { "dimension": "data", "level": "high" },
-    "not_null_without_default": { "dimension": "data", "level": "medium" },
-    "column_type_change": { "dimension": "data", "level": "medium" },
-    "rename": { "dimension": "data", "level": "medium" },
-    "data_migration": { "dimension": "data", "level": "medium" },
-    "new_direct_dependency": { "dimension": "structural", "level": "medium" },
-    "major_upgrade": { "dimension": "structural", "level": "medium" },
-    "dependency_downgrade": { "dimension": "structural", "level": "medium" },
-    "install_script": { "dimension": "security", "level": "high" },
-    "unlocked_dependencies": { "dimension": "structural", "level": "medium" }
+    "security_middleware_removed": {
+      "dimension": "security",
+      "level": "high"
+    },
+    "unauthenticated_route": {
+      "dimension": "security",
+      "level": "medium",
+      "heuristic": true
+    },
+    "middleware_changed": {
+      "dimension": "security",
+      "level": "medium"
+    },
+    "destructive": {
+      "dimension": "data",
+      "level": "high"
+    },
+    "migration_edited": {
+      "dimension": "data",
+      "level": "high"
+    },
+    "not_null_without_default": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "column_type_change": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "rename": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "data_migration": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "new_direct_dependency": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "major_upgrade": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "dependency_downgrade": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "install_script": {
+      "dimension": "security",
+      "level": "high"
+    },
+    "unlocked_dependencies": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "index_change_existing_table": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "unpinned_action": {
+      "dimension": "trust_root",
+      "level": "high"
+    }
   },
   "op_rules": {
-    "route_removed": { "dimension": "structural", "level": "medium" },
-    "route_added": { "dimension": "structural", "level": "low" }
+    "route_removed": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "route_added": {
+      "dimension": "structural",
+      "level": "low"
+    }
   }
 }

@@ -54,3 +54,9 @@ test("extractRoutes diffs routes and flags removed auth middleware", () => {
   const none = extractRoutes({ cwd: t.dir, base, head: base, changed: [] });
   assert.match(none.note, /no route files changed/);
 });
+
+test("an unreadable middleware is recorded as <dynamic>, not UNKNOWN", () => {
+  const r = parseRoutes(`<?php\nRoute::middleware(['auth', config('x')])->group(function () { Route::GET('a', A::class); });\n`, "routes/web.php");
+  assert.deepEqual(r.unknown, []);
+  assert.deepEqual(r.routes.get("GET /a").middleware, ["<dynamic>", "auth"]);
+});

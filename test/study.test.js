@@ -38,4 +38,5 @@ test("end to end: reverts and SZZ fix follow-ups are linked", () => {
   const md = summarize(s);
   assert.match(md, /## Tiers and outcomes/);
   assert.match(md, /### Controlling for size/);
+  assert.match(md, /### Size threshold/);
 });

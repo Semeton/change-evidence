@@ -1,6 +1,6 @@
 {
   "name": "@semeton/change-evidence",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "Change evidence gate, phase 1: replay a repository's merged pull requests and report what each one changed, how risky it was, and what could not be established.",
   "bin": {

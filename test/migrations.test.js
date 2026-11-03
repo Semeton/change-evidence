@@ -49,3 +49,9 @@ test("editing a shipped migration is a signal", () => {
   const risks = r.observed.map((o) => o.risk).filter(Boolean).sort();
   assert.deepEqual(risks, ["destructive", "migration_edited"]);
 });
+
+test("method names are case-insensitive, and index changes on existing tables carry risk", () => {
+  const r = parseMigration(M(`Schema::TABLE('t', function ($table) { $table->datetime('at')->NULLABLE(); $table->index('at'); });`), "m.php");
+  assert.deepEqual(r.unknown, []);
+  assert.deepEqual(r.ops.map((o) => `${o.op} ${o.risk || ""}`.trim()), ["column_added", "index_added index_change_existing_table"]);
+});

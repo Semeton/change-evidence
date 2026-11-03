@@ -41,3 +41,9 @@ test("a broken rule escalates instead of passing", () => {
   assert.equal(r.dimensions.security, "medium");
   assert.match(r.hits[0].unknown, /rule failed/);
 });
+
+test("bootstrap/app.php escalates only on middleware lines", () => {
+  const edit = (added) => change(["bootstrap/app.php"], { "bootstrap/app.php": { added, removed: [] } });
+  assert.equal(assess(policy, edit(["    ->withExceptions(function (Exceptions $e) {"]), []).tier, "low");
+  assert.equal(assess(policy, edit(["        $middleware->validateCsrfTokens(except: ['hook/*']);"]), []).dimensions.security, "high");
+});
