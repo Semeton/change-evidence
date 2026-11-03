@@ -1,0 +1,17 @@
+{
+  "name": "@semeton/change-evidence",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Change evidence gate, phase 1: replay a repository's merged pull requests and report what each one changed, how risky it was, and what could not be established.",
+  "bin": {
+    "change-evidence": "bin/change-evidence.js"
+  },
+  "main": "./lib/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,56 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert");
+const { parseRoutes, extractRoutes } = require("../lib/extractors/routes");
+const { changedFiles } = require("../lib/git");
+const { repo } = require("./helpers");
+
+const SRC = `<?php
+use Illuminate\\Support\\Facades\\Route;
+Route::prefix('api')->middleware('api')->group(static function (): void {
+    Route::get('ping', static fn () => null);
+    Route::middleware(['auth', AdminOnly::class])->group(function () {
+        Route::post('users', [UserController::class, 'store'])->name('users.store');
+        Route::apiResource('songs', SongController::class);
+        Route::group(['prefix' => 'radio', 'middleware' => 'radio.enabled'], static function () {
+            Route::get('stations', StationController::class);
+        });
+        if (config('x.enabled')) {
+            Route::delete('cache', ClearCache::class);
+        }
+    });
+    Route::post('ai', AiController::class)->middleware('throttle:10,1');
+    Route::get($dynamic, Foo::class);
+    Route::group([], base_path('routes/other.php'));
+});
+`;
+
+test("parses nested groups, array groups, conditionals and trailing middleware", () => {
+  const r = parseRoutes(SRC, "routes/api.php");
+  const get = (k) => r.routes.get(k);
+  assert.deepEqual(get("GET /api/ping"), { action: "closure", middleware: ["api"] });
+  assert.deepEqual(get("POST /api/users"), { action: "UserController@store", middleware: ["AdminOnly", "api", "auth"], name: "users.store" });
+  assert.ok(get("APIRESOURCE /api/songs"));
+  assert.deepEqual(get("GET /api/radio/stations").middleware, ["AdminOnly", "api", "auth", "radio.enabled"]);
+  assert.equal(get("DELETE /api/cache").conditional, true);
+  assert.deepEqual(get("POST /api/ai").middleware, ["api", "throttle:10,1"]);
+  assert.equal(r.unknown.length, 2);
+  assert.match(r.unknown.join("\n"), /non-literal URI/);
+  assert.match(r.unknown.join("\n"), /loads routes from elsewhere/);
+});
+
+test("extractRoutes diffs routes and flags removed auth middleware", () => {
+  const t = repo();
+  const v1 = `<?php\nRoute::middleware('auth')->group(function () {\n  Route::get('a', A::class);\n  Route::get('b', B::class);\n});\n`;
+  const base = t.commit("init", { "routes/web.php": v1, "app/x.php": "x" });
+  const v2 = `<?php\nRoute::get('a', A::class);\nRoute::middleware('auth')->group(function () {\n  Route::get('c', C::class);\n});\n`;
+  const head = t.commit("change", { "routes/web.php": v2 });
+  const r = extractRoutes({ cwd: t.dir, base, head, changed: changedFiles(t.dir, base, head) });
+  const by = Object.fromEntries(r.observed.map((o) => [o.op + " " + o.key, o]));
+  assert.equal(r.state, "PASS");
+  assert.equal(by["route_changed GET /a"].risk, "security_middleware_removed");
+  assert.ok(by["route_added GET /c"]);
+  assert.ok(by["route_removed GET /b"]);
+  const none = extractRoutes({ cwd: t.dir, base, head: base, changed: [] });
+  assert.match(none.note, /no route files changed/);
+});

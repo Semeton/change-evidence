@@ -1,0 +1,37 @@
+"use strict";
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const { execFileSync } = require("child_process");
+
+const ENV = { ...process.env, GIT_CONFIG_GLOBAL: os.devNull, GIT_CONFIG_NOSYSTEM: "1", GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" };
+
+function repo() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ce-"));
+  const g = (...a) => execFileSync("git", ["-C", dir, ...a], { env: ENV, encoding: "utf8", timeout: 20000 }).trim();
+  g("init", "-q", "-b", "main");
+  g("config", "core.hooksPath", "/dev/null");
+  let day = 1;
+  return {
+    dir,
+    g,
+    write(files) {
+      for (const [f, c] of Object.entries(files)) {
+        const p = path.join(dir, f);
+        if (c === null) fs.rmSync(p, { force: true });
+        else {
+          fs.mkdirSync(path.dirname(p), { recursive: true });
+          fs.writeFileSync(p, c);
+        }
+      }
+    },
+    commit(msg, files = {}) {
+      this.write(files);
+      g("add", "-A");
+      const date = `2026-01-${String(day++).padStart(2, "0")}T12:00:00Z`;
+      execFileSync("git", ["-C", dir, "commit", "-q", "--allow-empty", "-m", msg], { env: { ...ENV, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }, timeout: 20000 });
+      return g("rev-parse", "HEAD");
+    },
+  };
+}
+module.exports = { repo };
