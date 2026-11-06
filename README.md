@@ -115,11 +115,38 @@ Routes registered by service providers or packages are outside coverage, and the
 `policies/laravel.json` holds the default rules, as data:
 
 - **Path rules**: CI workflows, the test harness, auth config, the HTTP kernel, middleware, policies and infrastructure config.
-- **Pattern rules** over added or removed diff lines: `withoutMiddleware`, `$guarded = []`, raw SQL, `{!!`, removed `authorize()` calls and skipped tests. These are labelled heuristic.
-- **Evidence rules** keyed on what the extractors observed.
-- **Size thresholds**.
+- **Pattern rules** over added or removed diff lines: `withoutMiddleware`, `$guarded = []`, raw SQL, `{!!`, removed `authorize()` calls and skipped tests. A match counts only if the PR changes how often the pattern appears in that file, so moving a line isn't new. An optional `unless` regex excuses matching lines (for example a bypass that re-applies `tenant_id` on the same line). Excused matches are counted and shown in the report, never hidden.
+- **Evidence rules**, keyed on what the extractors observed.
+- **Size thresholds.** Generated and vendored files don't count toward them: `public/build/**`, `vendor/**`, `node_modules/**`, lockfiles, minified and source-map files, Wayfinder output, plus anything the **base** commit's `.gitattributes` marks `linguist-generated` or `linguist-vendored`. A PR's own `.gitattributes` is never read for this. An overlay can add paths with `generated`. Path rules still apply to generated files.
 
 Rules only escalate. An extractor's UNKNOWN raises its dimension to `on_unknown`, and a rule that throws does the same; neither ever counts as a pass. Pass `--policy` to use your own policy file.
+
+## Reading a report
+
+The report keeps two things apart.
+
+- **Observed impact** is what the evaluator read from the diff: routes added, middleware removed, a column retyped, an Action re-pinned, with the file and, for pattern matches, the line.
+- **Review priority** (low, medium or high) is the policy's recommendation, derived from that impact, rule severity, size and uncertainty. The report says which rules decided each dimension and which dimension decided the priority.
+
+**Low is not a finding that a change is safe.** It means no rule crossed an escalation threshold. The *Uncertainty and coverage* section lists what couldn't be established, and what the evaluator doesn't look at.
+
+Every finding has a kind:
+
+| Kind | Meaning |
+|---|---|
+| observed | Read directly from the diff (this file changed, this route lost `auth`). The risk is the policy's judgement; the fact isn't. |
+| heuristic | A pattern match or an inference (a new route with no auth middleware found). Worth checking; not a confirmed problem. |
+| unknown | Couldn't be established. It raises the priority and never counts as a pass. |
+| size | Large by the policy's thresholds, counting only reviewable files. |
+
+The report's sections are:
+
+1. review priority and what decided it;
+2. *where to look*: up to eight places, highest first, each with file and line where there is one;
+3. *observed impact*: counts only;
+4. per-dimension evidence: security, data integrity, structure and dependencies, CI and supply chain;
+5. *uncertainty and coverage*;
+6. the full decision trace.
 
 ## Outcome labels
 

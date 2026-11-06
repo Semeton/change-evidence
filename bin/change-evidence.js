@@ -242,7 +242,7 @@ async function main(argv) {
     }
     // Policy from the base branch tip: the newest rules a maintainer has merged.
     const { policy, error } = policyFor(cwd, baseSha, { policyFile: opt.policy, overlayFile: opt.overlay });
-    const result = analyseChange(cwd, mergeBase, headSha, compile(policy));
+    const result = analyseChange(cwd, mergeBase, headSha, compile(policy), { policyBase: baseSha });
     const mode = opt["fail-on"] ? "enforce" : "shadow";
     const md = renderPr({ result, base: mergeBase, head: headSha, policy, version: VERSION, mode, policyError: error });
     const json = { version: 1, evaluator: VERSION, mode, base: mergeBase, head: headSha, policy: { name: policy.name, version: policy.version, overlay: policy.overlay || null }, files: result.files.length, lines: result.lines, risk: result.risk, evidence: result.evidence };

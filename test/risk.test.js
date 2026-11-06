@@ -7,7 +7,8 @@ const policy = require("../policies/laravel.json");
 const change = (files, diff = {}, lines = { added: 10, removed: 0 }) => ({
   files: files.map((f) => (typeof f === "string" ? { status: "M", path: f } : f)),
   lines,
-  diff: new Map(Object.entries(diff)),
+  // Diff lines as the engine receives them: { n, text }, numbered from 1.
+  diff: new Map(Object.entries(diff).map(([f, d]) => [f, { added: (d.added || []).map((text, i) => ({ n: i + 1, text })), removed: (d.removed || []).map((text, i) => ({ n: i + 1, text })) }])),
 });
 
 test("globs", () => {
