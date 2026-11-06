@@ -15,7 +15,6 @@ const gh = require("../lib/github");
 
 const BIN = path.join(__dirname, "..", "bin", "change-evidence.js");
 const REPO = "acme/app";
-const WIN = process.platform === "win32";
 
 // origin (bare) with main, a hostile same-repo PR #7 and a fork PR #8; plus a workspace
 // clone of main, as actions/checkout leaves it.
@@ -36,10 +35,12 @@ function fixture() {
     ".gitattributes": "* filter=evil diff=evil\n",
     "app/Models/Matter.php": "<?php\nclass Matter { function all() { return static::withoutGlobalScopes()->get(); } }\n",
     [`app/a\`b|c @octocat ${MARKER}.php`]: "<?php\n",
+    "app/new\nline.php": "<?php\n",
   };
-  if (!WIN) files["app/new\nline.php"] = "<?php\n";
-  const head = t.commit("hostile", files);
-  t.g("checkout", "-q", "main");
+  // Written as objects: no Windows filesystem could hold these names, but git can.
+  const head = t.commitObjects("hostile", files);
+  // -f: the hostile commit lives only in objects and the index, never on disk.
+  t.g("checkout", "-q", "-f", "main");
   t.g("checkout", "-q", "-b", "fork8");
   const forkHead = t.commit("fork change", { "app/Models/Matter.php": "<?php\nclass Matter { public $guarded = []; }\n" });
   t.g("checkout", "-q", "main");

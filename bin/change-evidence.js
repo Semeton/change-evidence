@@ -83,6 +83,11 @@ function args(argv) {
   return { pos, opt };
 }
 
+// Repository paths in messages always use "/", whatever the platform.
+function relPath(from, to) {
+  return path.relative(from, to).split(path.sep).join("/");
+}
+
 function loadPolicy(file) {
   const p = file ? path.resolve(file) : path.join(__dirname, "..", "policies", "laravel.json");
   return JSON.parse(fs.readFileSync(p, "utf8"));
@@ -132,12 +137,12 @@ async function main(argv) {
     const files = [[path.join(dir, "change-evidence.yml"), t.workflow], [path.join(dir, update.TRIGGER_NAME), t.trigger]];
     const existing = files.filter(([f]) => fs.existsSync(f));
     if (existing.length && !opt.force) {
-      console.error(`${existing.map(([f]) => path.relative(cwd, f)).join(" and ")} already exist${existing.length === 1 ? "s" : ""}. To move an existing install forward, use: change-evidence upgrade (or --force to overwrite)`);
+      console.error(`${existing.map(([f]) => relPath(cwd, f)).join(" and ")} already exist${existing.length === 1 ? "s" : ""}. To move an existing install forward, use: change-evidence upgrade (or --force to overwrite)`);
       return 2;
     }
     fs.mkdirSync(dir, { recursive: true });
     for (const [f, content] of files) fs.writeFileSync(f, content);
-    console.log(`Wrote ${files.map(([f]) => path.relative(cwd, f)).join(" and ")}, pinned to ${VERSION}.`);
+    console.log(`Wrote ${files.map(([f]) => relPath(cwd, f)).join(" and ")}, pinned to ${VERSION}.`);
     console.log(`Merge them to the default branch in their own PR: change-evidence reports on PRs opened after that.`);
     return 0;
   }
@@ -167,7 +172,7 @@ async function main(argv) {
       return 2;
     }
     const r = update.upgradeWorkflow(file, { target: info.version, integrity: info.integrity, current: VERSION, check: !!opt.check });
-    const rel = path.relative(cwd, file);
+    const rel = relPath(cwd, file);
     for (const w of r.warnings || []) console.log(`  ! ${w}`);
     if (r.status === "no-pin") {
       console.error(`${rel} doesn't pin a version with CHANGE_EVIDENCE: "${update.NAME}@<version>"`);
@@ -185,7 +190,7 @@ async function main(argv) {
     } else {
       console.log(`${rel}: ${r.pinned} → ${r.target}${r.refreshed ? " (workflow refreshed from the template)" : ""}`);
       if (r.migrated) console.log(`  Migrated from pull_request_target to the trigger + workflow_run design (docs/security.md).`);
-      if (r.trigger) console.log(`  ${r.trigger === "added" ? "Added" : "Refreshed"} ${path.relative(cwd, r.triggerFile)}.`);
+      if (r.trigger) console.log(`  ${r.trigger === "added" ? "Added" : "Refreshed"} ${relPath(cwd, r.triggerFile)}.`);
       if (r.customised) console.log(`  The workflow differs from the stock templates, so only the pin and integrity moved. Compare with: npx ${update.NAME}@${r.target} init`);
       else if (VERSION !== r.target) console.log(`  Only the pin moved. To also pick up template changes, run: npx ${update.NAME}@${r.target} upgrade`);
       console.log(`  Review the diff and commit it in its own PR: the evaluator is part of your trust root.`);
@@ -211,12 +216,12 @@ async function main(argv) {
     if (opt.write) {
       const target = path.join(cwd, opt.overlay || OVERLAY);
       if (fs.existsSync(target) && !opt.force) {
-        console.error(`\n${path.relative(cwd, target)} already exists; printing the suggestion instead (--force to overwrite).\n`);
+        console.error(`\n${relPath(cwd, target)} already exists; printing the suggestion instead (--force to overwrite).\n`);
         process.stdout.write(json);
         return 0;
       }
       fs.writeFileSync(target, json);
-      console.error(`\nWrote ${path.relative(cwd, target)}. Review it and commit it in its own PR: the overlay is trust root.`);
+      console.error(`\nWrote ${relPath(cwd, target)}. Review it and commit it in its own PR: the overlay is trust root.`);
     } else process.stdout.write(json);
     return 0;
   }

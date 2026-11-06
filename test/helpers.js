@@ -30,6 +30,21 @@ function repo() {
         }
       }
     },
+    // Commit files straight into git objects, bypassing the working tree, so paths that
+    // no filesystem here could hold (Windows: | < > " ? *, or a newline anywhere) can
+    // still be tested. A hostile PR's commits are made elsewhere and arrive as objects.
+    commitObjects(msg, files) {
+      for (const [f, content] of Object.entries(files)) {
+        const blob = execFileSync("git", ["-C", dir, "hash-object", "-w", "--stdin"], { env: ENV, input: content, encoding: "utf8" }).trim();
+        execFileSync("git", ["-C", dir, "-c", "core.protectNTFS=false", "update-index", "--add", "--cacheinfo", `100644,${blob},${f}`], { env: ENV, timeout: 20000 });
+      }
+      const date = `2026-01-${String(day++).padStart(2, "0")}T12:00:00Z`;
+      const tree = g("write-tree");
+      const commit = execFileSync("git", ["-C", dir, "commit-tree", tree, "-p", "HEAD", "-m", msg], { env: { ...ENV, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }, encoding: "utf8" }).trim();
+      g("update-ref", "HEAD", commit);
+      g("read-tree", "HEAD");
+      return commit;
+    },
     commit(msg, files = {}) {
       this.write(files);
       g("add", "-A");
