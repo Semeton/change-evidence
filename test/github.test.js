@@ -24,7 +24,6 @@ function fixture() {
     "routes/web.php": "<?php\nRoute::middleware('auth')->group(function () {\n  Route::get('home', Home::class);\n});\n",
     "app/Models/Matter.php": "<?php\nclass Matter {}\n",
   });
-  t.g("checkout", "-q", "-b", "pr7");
   const hostileUri = "x`|@octocat <img src=x onerror=alert(1)> " + MARKER + " #1";
   const files = {
     // A route whose URI is built to break Markdown, ping someone and forge the marker.
@@ -37,10 +36,8 @@ function fixture() {
     [`app/a\`b|c @octocat ${MARKER}.php`]: "<?php\n",
     "app/new\nline.php": "<?php\n",
   };
-  // Written as objects: no Windows filesystem could hold these names, but git can.
-  const head = t.commitObjects("hostile", files);
-  // -f: the hostile commit lives only in objects and the index, never on disk.
-  t.g("checkout", "-q", "-f", "main");
+  // Written as objects only: no Windows filesystem could hold these names, but git can.
+  const head = t.commitObjects("hostile", files, { parent: base });
   t.g("checkout", "-q", "-b", "fork8");
   const forkHead = t.commit("fork change", { "app/Models/Matter.php": "<?php\nclass Matter { public $guarded = []; }\n" });
   t.g("checkout", "-q", "main");
@@ -49,7 +46,6 @@ function fixture() {
   const og = (...a) => execFileSync("git", ["-C", origin, ...a], { encoding: "utf8" });
   og("update-ref", "refs/pull/7/head", head);
   og("update-ref", "refs/pull/8/head", forkHead);
-  og("update-ref", "-d", "refs/heads/pr7");
   og("update-ref", "-d", "refs/heads/fork8");
   const ws = fs.mkdtempSync(path.join(os.tmpdir(), "ce-ws-"));
   execFileSync("git", ["clone", "-q", origin, ws], { env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1" } });
