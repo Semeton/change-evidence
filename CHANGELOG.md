@@ -1,5 +1,104 @@
 # Changelog
 
+## [0.4.0]
+
+Reports now separate observed impact from review priority. The GitHub integration no longer uses `pull_request_target`. GitHub blocks that trigger by default in public repositories from December 2, 2026. `docs/security.md` has the threat model.
+
+**Policy, suggest and contracts**
+
+- **A policy-health section in the study summary:**
+  - rules in the policy against rules that fired, and which never did;
+  - which rules most often decided a high priority;
+  - rules firing on under 1% of PRs;
+  - rules whose positive rate is significantly below the base rate (20+ PRs);
+  - UNKNOWNs by extractor.
+
+  It's a maintenance view, never grounds to disable a rule on its own.
+- **`suggest` proposes:**
+  - web-server config (`.htaccess`, `web.config`, nginx, Caddy) at security medium;
+  - deploy and infrastructure files the defaults miss (Procfile, k8s, terraform, fly, deploy scripts);
+  - gates registered outside policy folders (`Gate::define` in a service provider).
+
+  It also notes custom middleware aliases, and how many existing global-scope bypasses there are, and how many re-apply `tenant_id`. It never proposes an exception to the tenant boundary itself. "Current threshold" now replaces "default" where an overlay already sets size.
+- **Evidence contract:** every result carries `ecosystem`, and `validateResult()` checks the shared shape, including that unknowns are never reported as PASS. Tests run it over every extractor on ordinary, empty, malformed and hostile changes. An extractor that throws now goes through `result()`, and a test shows it escalates.
+- `docs/architecture.md`: the seven stages, the evidence contract, and what adding a second ecosystem involves.
+- `docs/integration-repo-memory.md`: a proposed, unimplemented contract for surfacing accepted repository decisions in the report. It's read from a committed index at the base tip, never affects priority, and never judges compliance.
+
+**Extractors** (policy v5)
+
+- **Workflows: a change to what a workflow may do now reads differently from a routine bump.** New evidence:
+  - triggers added or removed, with `privileged_trigger_added` for `pull_request_target`, `workflow_run`, `issue_comment` and similar;
+  - `permissions_widened`, including removing explicit permissions;
+  - new secrets (`secret_exposure_changed`; `GITHUB_TOKEN` excluded);
+  - `untrusted_expression_in_shell` and `privileged_pr_checkout` (both heuristic);
+  - `release_workflow_changed`;
+  - reusable-workflow and local-action references labelled.
+- **Dependencies:**
+  - `vendored_code_changed`: files in a committed `vendor/<pkg>` or `node_modules/<pkg>` changed while the package's locked version didn't. On lawyering this found `vendor/pestphp/pest` edited in PRs #1, #2, #4 and #66.
+  - `dependency_source_changed`: a package moving between registry, git and path sources, or to another host.
+  - `package_replacement_changed`: a package removed and now provided by another package's `replace`. Framework `replace` lists changing on an upgrade don't count.
+  - `dependency_overrides_changed`.
+  - UNKNOWN when a required package is missing from the lockfile. `workspace:`, `catalog:` and `npm:` aliases are skipped.
+- **Migrations:**
+  - foreign keys reported as themselves, with `cascade_delete` for `ON DELETE CASCADE` and `foreign_key_dropped`;
+  - `nullability_tightened` for `->change()` without `->nullable()`, or for `->nullable(false)`;
+  - every operation has a `category`: destructive, structural or data.
+- **Routes:**
+  - `middleware_alias_changed`: an alias remapped or removed in `bootstrap/app.php` or the HTTP kernel, reported even when no route file changed;
+  - route registration outside `routes/` (service providers, `loadRoutesFrom`) is UNKNOWN with file and line, instead of silently missed.
+- **Tests:** malformed-input and adversarial tests for every extractor, including 100 KB pathological lines under a time limit.
+- `docs/extractors.md` gives each extractor's inputs, outputs, UNKNOWN conditions and limits.
+- On Koel the tier distribution is unchanged; on lawyering two PRs move from medium to high (the vendored edits).
+
+**Study**
+
+- **Outcome provenance.** Reverts record `how` (sha, title or a `#N` mention), `confidence` and `restored`; `Revert "Revert …"` and git ≥ 2.43's `Reapply "…"` are both recognised. SZZ candidates record `blamed_lines`.
+- **Two labels.** *strict* counts only confirmed reverts that stayed reverted, and excludes and counts everything ambiguous. *inclusive* counts any revert or SZZ candidate.
+- **Fix: SZZ never labelled merge-commit PRs.** Blame names the branch's commits, not the merge, so BookStack and lawyering got no labels at all. They're now mapped back to the PR.
+- **Fixes pushed directly to the main line now count**, not only fix PRs. Koel had 394 such fix commits, BookStack 219.
+- **Metrics:** precision, recall, false-positive and false-negative rates, and capture at 10/20/30% budgets against size-only and random baselines, all with Wilson 95% intervals. Results resting on fewer than 20 positives are marked †, exploratory.
+- **Validity:**
+  - a chronological holdout (`--holdout`, default 0.3);
+  - a `calibration` register in the policy (Koel and Monica, through 2026-11-03), so in-sample results are labelled as such;
+  - `--repository` to override the repository detected from the origin remote.
+- **Per-rule analysis** adds sole escalations (the review load a rule adds by itself) and lift over size; rules that never fired are listed.
+- **Blind labelling:** `--export-sample FILE [--sample 60] [--seed 1]` writes a tier-stratified sample with no tool output, plus a key to keep back. `--labels FILE` reads the judgements and reports per-tier risky rates, a weighted capture estimate, and agreement with the tool and the proxies.
+- **Reproducible:** no wall-clock time in the output; identical runs give identical bytes.
+- **Size bands and baselines use reviewable lines**, excluding generated files.
+- **CSV:** new columns (`revert_how`, `revert_confidence`, `revert_restored`, `szz_blamed_lines`, `label_strict`, `label_inclusive`, `counted_lines`, `split`) are appended after the existing ones. `study.json` is version 2.
+- `docs/validation.md` covers the method, limits and results on four repositories.
+
+**Reports**
+
+- **Observed impact and review priority are separate.** The report opens with the priority and exactly which rules and dimensions decided it. A low result states that low is not a finding of safety. The remaining sections are *where to look*, *observed impact* (counts only), per-dimension evidence, *uncertainty and coverage*, and a full decision trace.
+- **Every finding has a kind:** `observed`, `heuristic`, `unknown` or `size`. Pattern matches and inferences are labelled heuristic and never described as confirmed problems.
+- **Traceability.** Pattern hits carry file, line and matched text, and the report shows `file:line`. The JSON adds `risk.contributors` and `risk.decided_by`.
+- **Generated and vendored files no longer count toward size:** `public/build`, `vendor`, `node_modules`, lockfiles, minified files, Wayfinder output, and the base's `linguist-generated`/`linguist-vendored` attributes. A PR's own `.gitattributes` is ignored. On lawyering PR #107 this takes 185 of 240 files out of the size count.
+- **Pattern rules take `unless`.** Excused matches are counted and reported.
+- **New tables collapse to one line** in the schema section.
+- **Fix: pattern rules silently stopped after the 400th file in a PR.** Diffs are now read in batches and every file is scanned.
+- Policy v4: `generated` defaults.
+
+**Security**
+
+- **Two workflows instead of one.** `change-evidence-trigger.yml` runs on `pull_request` with no permissions and does nothing. `change-evidence.yml` runs on `workflow_run`, from the default branch, and uses nothing the trigger run produced.
+- **New `github-report` command**, run by the reporter workflow:
+  - it validates every event field it uses, and refuses with exit 3 before any API call;
+  - it only reports on an open PR on this repository whose head is exactly the event's commit, cross-checked through the API, and finds fork PRs through the API too;
+  - it fetches the PR as git objects only, passing credentials through the environment rather than argv or `.git/config`;
+  - it posts one comment and an informational `change-evidence` commit status.
+- **Evaluator integrity.** The workflow pins the evaluator's sha512 and verifies the tarball before running it. Nothing is `npm install`ed.
+- **Comment injection fixed.** File paths, route URIs and other PR-controlled strings could close code spans, split table rows, ping users (`@name`) or carry the comment marker. Everything now goes through `lib/markdown.js`.
+- **Sticky comment hijack fixed.** Only the bot's own comment is ever updated; any comment containing the marker used to qualify.
+- `pr` and `change` resolve revisions with `--end-of-options`: a revision like `--upload-pack=…` is refused, not passed to git as an option. Unrelated histories exit 2 with a clear message.
+- **`init` and `upgrade`:**
+  - `init --write` writes both workflows, `init --trigger` prints the trigger, and `init` resolves the published integrity, or takes `--integrity`;
+  - `upgrade` migrates an unmodified 0.1–0.3 workflow to the new pair, moves the pin and integrity together, and warns about edited workflows still on `pull_request_target`.
+- Tests:
+  - end-to-end adversarial tests against a fake GitHub API: hostile names and paths, install scripts, filter drivers, injected branch names, a forged marker, forks, mismatched SHAs, closed PRs and other repositories;
+  - static checks on the workflow templates, each mutation-tested;
+  - edge cases: binary files, renames, deletions, large diffs, unrelated histories.
+
 ## [0.3.0]
 
 0.2.0 was released from `main` before these changes merged; it is the 0.1.x code.

@@ -1,0 +1,19 @@
+# change-evidence trigger. It does nothing except exist, so that a pull request causes a
+# workflow run. That run's completion starts change-evidence.yml, which GitHub runs from
+# the default branch. This job has no permissions and no secrets, and change-evidence
+# uses nothing it produces: not its outputs, its artifacts or its logs. A PR can edit or
+# delete this file; the worst it can do is suppress its own report (see docs/security.md).
+name: change-evidence-trigger
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: echo "change-evidence evaluates this pull request from the default branch's workflow."

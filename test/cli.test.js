@@ -29,45 +29,65 @@ test("-v, --version, version print the version; -h and --help print usage", () =
   assert.match(bad.stderr, /unknown command: nope/);
 });
 
-test("the current template is recorded in templates/history.json", () => {
-  assert.ok(update.knownTemplates().includes(update.templateHash(TEMPLATE)), "append the new template hash to templates/history.json");
+const INTEGRITY = `sha512-${"Q".repeat(86)}==`;
+const OLD = fs.readFileSync(path.join(__dirname, "fixtures", "workflow-0.3.0-pull_request_target.yml"), "utf8");
+const WF = ".github/workflows/change-evidence.yml";
+const TRIGGER = ".github/workflows/change-evidence-trigger.yml";
+
+test("the current templates are recorded in templates/history.json", () => {
+  const t = update.renderTemplates(VERSION, INTEGRITY);
+  assert.ok(update.knownTemplates("workflow").includes(update.templateHash(t.workflow)), "append the workflow template's hash to templates/history.json");
+  assert.ok(update.knownTemplates("trigger").includes(update.templateHash(t.trigger)), "append the trigger template's hash to templates/history.json");
+  assert.ok(update.knownTemplates("workflow").includes(update.templateHash(OLD)), "the 0.1–0.3 template must stay known, so installs can migrate");
 });
 
 function workflowRepo(content) {
   const t = repo();
-  t.write({ ".github/workflows/change-evidence.yml": content });
+  t.write({ [WF]: content });
   return t;
 }
+const read = (t, f) => fs.readFileSync(path.join(t.dir, f), "utf8");
 
-test("upgrade moves the pin; a stock workflow is refreshed, a customised one only re-pinned", () => {
-  // Stock template from an older release (same template text, older pin), upgraded to this version.
-  const old = TEMPLATE.replace(/change-evidence@[^"]+/, "change-evidence@0.0.9");
-  let t = workflowRepo(old);
-  let r = run(["upgrade", t.dir, "--to", VERSION]);
+test("upgrade migrates a stock 0.1–0.3 pull_request_target install to trigger + workflow_run", () => {
+  const t = workflowRepo(OLD);
+  const r = run(["upgrade", t.dir, "--to", VERSION, "--integrity", INTEGRITY]);
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, new RegExp(`0\\.0\\.9 → ${VERSION.replace(/\./g, "\\.")}`));
-  assert.equal(fs.readFileSync(path.join(t.dir, ".github/workflows/change-evidence.yml"), "utf8"), TEMPLATE.replace(/change-evidence@[^"]+/, `change-evidence@${VERSION}`));
-  assert.match(run(["upgrade", t.dir, "--to", VERSION]).stdout, /already on/);
+  assert.match(r.stdout, new RegExp(`0\\.3\\.0 → ${VERSION.replace(/\./g, "\\.")}`));
+  assert.match(r.stdout, /Migrated from pull_request_target/);
+  assert.match(r.stdout, /Added \.github\/workflows\/change-evidence-trigger\.yml/);
+  const fresh = update.renderTemplates(VERSION, INTEGRITY);
+  assert.equal(read(t, WF), fresh.workflow);
+  assert.equal(read(t, TRIGGER), fresh.trigger);
+  assert.doesNotMatch(read(t, WF), /pull_request_target/);
+  assert.match(run(["upgrade", t.dir, "--to", VERSION, "--integrity", INTEGRITY]).stdout, /already on/);
+});
 
-  // An older template version (unknown to history) with local edits: only the pin moves.
-  const custom = old.replace("timeout-minutes: 10", "timeout-minutes: 30");
+test("upgrade on a customised workflow moves only the pin and integrity, and says what it lacks", () => {
+  let t = workflowRepo(OLD.replace("timeout-minutes: 10", "timeout-minutes: 30"));
+  let r = run(["upgrade", t.dir, "--to", "9.9.9", "--integrity", INTEGRITY]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /only the pin and integrity moved/);
+  assert.match(r.stdout, /doesn't verify the evaluator's integrity/);
+  assert.match(r.stdout, /blocks by default in public repositories from December 2, 2026/);
+  assert.match(read(t, WF), /change-evidence@9\.9\.9"/);
+  assert.match(read(t, WF), /timeout-minutes: 30/);
+  assert.ok(!fs.existsSync(path.join(t.dir, TRIGGER)), "a customised install isn't restructured");
+
+  // A customised new-style workflow: the integrity line moves with the pin.
+  const custom = update.renderTemplates("0.4.0", `sha512-${"B".repeat(86)}==`).workflow.replace("timeout-minutes: 10", "timeout-minutes: 20");
   t = workflowRepo(custom);
-  r = run(["upgrade", t.dir, "--to", "9.9.9"]);
-  assert.equal(r.status, 0);
-  assert.match(r.stdout, /only the pin moved/);
-  const after = fs.readFileSync(path.join(t.dir, ".github/workflows/change-evidence.yml"), "utf8");
-  assert.match(after, /change-evidence@9\.9\.9"/);
-  assert.match(after, /timeout-minutes: 30/);
+  r = run(["upgrade", t.dir, "--to", "9.9.9", "--integrity", INTEGRITY]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(read(t, WF), new RegExp(`CHANGE_EVIDENCE_INTEGRITY: "${INTEGRITY.replace(/[+/]/g, "\\$&")}"`));
+  assert.match(read(t, WF), /timeout-minutes: 20/);
 
-  // --check reports and exits 1 without writing; a newer pin is left alone.
-  t = workflowRepo(old);
-  r = run(["upgrade", t.dir, "--to", "9.9.9", "--check"]);
-  assert.equal(r.status, 1);
-  assert.match(fs.readFileSync(path.join(t.dir, ".github/workflows/change-evidence.yml"), "utf8"), /@0\.0\.9"/);
-  assert.match(run(["upgrade", t.dir, "--to", "0.0.1"]).stdout, /newer than 0\.0\.1; left as is/);
-
-  // No workflow at all.
-  assert.equal(run(["upgrade", repo().dir, "--to", "1.0.0"]).status, 2);
+  // --check reports and exits 1 without writing; a newer pin is left alone; integrity is required.
+  t = workflowRepo(OLD);
+  assert.equal(run(["upgrade", t.dir, "--to", "9.9.9", "--integrity", INTEGRITY, "--check"]).status, 1);
+  assert.equal(read(t, WF), OLD);
+  assert.match(run(["upgrade", t.dir, "--to", "0.0.1", "--integrity", INTEGRITY]).stdout, /newer than 0\.0\.1; left as is/);
+  assert.equal(run(["upgrade", t.dir, "--to", "9.9.9", "--integrity", "sha1-nope"]).status, 2);
+  assert.equal(run(["upgrade", repo().dir, "--to", "1.0.0", "--integrity", INTEGRITY]).status, 2);
 });
 
 test("latestVersion reads the registry and gives null when it can't", async () => {
@@ -115,8 +135,36 @@ test("the update notice uses the daily cache, and never runs in CI or when turne
   }
 });
 
-test("init pins the version that printed it", () => {
-  const out = run(["init"]).stdout;
-  assert.match(out, new RegExp(`CHANGE_EVIDENCE: "@semeton/change-evidence@${VERSION.replace(/\./g, "\\.")}"`));
-  assert.ok(update.knownTemplates().includes(update.templateHash(out)), "still recognised as the stock template");
+test("init pins this version and its integrity, prints or writes both workflows", () => {
+  const out = run(["init", "--integrity", INTEGRITY]);
+  assert.equal(out.status, 0, out.stderr);
+  assert.match(out.stdout, new RegExp(`CHANGE_EVIDENCE: "@semeton/change-evidence@${VERSION.replace(/\./g, "\\.")}"`));
+  assert.ok(out.stdout.includes(`CHANGE_EVIDENCE_INTEGRITY: "${INTEGRITY}"`));
+  assert.match(out.stderr, /needs its trigger too/);
+  assert.match(run(["init", "--trigger"]).stdout, /^name: change-evidence-trigger$/m);
+  assert.equal(run(["init", "--integrity", "sha512-short"]).status, 2);
+
+  const t = repo();
+  const w = run(["init", t.dir, "--write", "--integrity", INTEGRITY]);
+  assert.equal(w.status, 0, w.stderr);
+  assert.equal(read(t, WF), update.renderTemplates(VERSION, INTEGRITY).workflow);
+  assert.equal(read(t, TRIGGER), update.renderTemplates(VERSION, INTEGRITY).trigger);
+  assert.equal(run(["init", t.dir, "--write", "--integrity", INTEGRITY]).status, 2, "won't overwrite");
+  assert.equal(run(["init", t.dir, "--write", "--force", "--integrity", INTEGRITY]).status, 0);
+});
+
+test("init finds the published integrity on the registry", async () => {
+  const server = http.createServer((req, res) => {
+    if (req.url === `/@semeton%2fchange-evidence/${VERSION}`) res.end(JSON.stringify({ version: VERSION, dist: { integrity: INTEGRITY } }));
+    else {
+      res.statusCode = 404;
+      res.end();
+    }
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const out = await new Promise((resolve) => {
+    require("child_process").execFile(process.execPath, [BIN, "init"], { env: { ...ENV, CHANGE_EVIDENCE_REGISTRY: `http://127.0.0.1:${server.address().port}` } }, (err, stdout) => resolve(stdout));
+  });
+  server.close();
+  assert.ok(out.includes(`CHANGE_EVIDENCE_INTEGRITY: "${INTEGRITY}"`));
 });

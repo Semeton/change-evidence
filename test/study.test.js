@@ -55,7 +55,7 @@ test("cli: pr writes report.md and evidence.json and exits 0 in shadow mode", ()
   const j = JSON.parse(fs.readFileSync(path.join(out, "evidence.json"), "utf8"));
   assert.equal(j.risk.tier, "high");
   assert.equal(j.mode, "shadow");
-  assert.match(fs.readFileSync(path.join(out, "report.md"), "utf8"), /Trust root \(high\)/);
+  assert.match(fs.readFileSync(path.join(out, "report.md"), "utf8"), /The priority is high because of CI and supply chain \(`ci`\)/);
   let code = 0;
   try {
     execFileSync(process.execPath, [bin, "pr", t.dir, "--base", base, "--head", head, "--out", out, "--fail-on", "high"], { stdio: "ignore" });
@@ -63,5 +63,5 @@ test("cli: pr writes report.md and evidence.json and exits 0 in shadow mode", ()
     code = e.status;
   }
   assert.equal(code, 1);
-  assert.match(execFileSync(process.execPath, [bin, "init"], { encoding: "utf8" }), /pull_request_target/);
+  assert.match(execFileSync(process.execPath, [bin, "init", "--integrity", `sha512-${"A".repeat(86)}==`], { encoding: "utf8", env: { ...process.env, CHANGE_EVIDENCE_NO_UPDATE_CHECK: "1" } }), /workflow_run/);
 });
