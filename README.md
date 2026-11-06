@@ -160,6 +160,14 @@ The report's sections are:
 
 **What four repositories show** (Koel and Monica in-sample; BookStack and lawyering out-of-sample): confirmed reverts are too rare to validate anything (4 in 2,352 PRs). On the one non-exploratory result, Koel's inclusive label, ranking by size alone captures more positives at a fixed budget than ranking by the tool: 57% against 34% at 20%. BookStack, the first out-of-sample repository, points the other way, but on 16 positives. **Nothing yet supports claiming the tool predicts defective PRs.** Its value so far is routing by consequence and showing the reviewer where to look. Measuring that needs human labels, which is the next step.
 
+## Design documents
+
+- [`docs/security.md`](docs/security.md): threat model of the GitHub integration.
+- [`docs/validation.md`](docs/validation.md): what the study can and can't show, with results.
+- [`docs/extractors.md`](docs/extractors.md): what each extractor establishes, and when it says UNKNOWN.
+- [`docs/architecture.md`](docs/architecture.md): stages, the evidence contract, adding an ecosystem.
+- [`docs/integration-repo-memory.md`](docs/integration-repo-memory.md): proposed integration with repo-memory (not implemented).
+
 ## Development
 
 ```bash
