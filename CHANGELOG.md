@@ -1,8 +1,8 @@
 # Changelog
 
-## [0.4.0]
+## [0.5.0]
 
-Reports now separate observed impact from review priority. The GitHub integration no longer uses `pull_request_target`. GitHub blocks that trigger by default in public repositories from December 2, 2026. `docs/security.md` has the threat model.
+Fixes for issues #3–#7: a Next.js / Prisma policy and extractor, coverage that says what wasn't checked, independent size thresholds in `suggest`, overlays in `study`, and status-filtered path rules. Workflow templates are unchanged from 0.4.0.
 
 **Issues #3, #4: Next.js / Prisma, and saying what wasn't checked**
 
@@ -25,6 +25,10 @@ Reports now separate observed impact from review priority. The GitHub integratio
 - **#6:** `study` applies the repository overlay committed at `--ref`, as `pr` does. `--overlay FILE` measures a local, uncommitted proposal, and `--no-overlay` uses the built-in policy alone. The summary names the overlay, warns that an overlay derived from this history is in-sample, and prints the commit where the development split ends. The new `suggest --ref` can derive an overlay from that commit without seeing the holdout.
 - **#7:** path rules take `"status": ["M","R","D"]`, so "a file that already existed was changed" can be expressed for any file type, such as an edited raw-SQL migration. A malformed `status` makes the rule fail as UNKNOWN, never pass.
 - **Fix:** compiled policies were cached on a property that `{ ...policy }` copies, so a spread or extended policy could be evaluated with the original's rules. The cache is now a `WeakMap`.
+
+## [0.4.0]
+
+Reports now separate observed impact from review priority. The GitHub integration no longer uses `pull_request_target`. GitHub blocks that trigger by default in public repositories from December 2, 2026. `docs/security.md` has the threat model.
 
 **Policy, suggest and contracts**
 
