@@ -4,6 +4,32 @@
 
 Reports now separate observed impact from review priority. The GitHub integration no longer uses `pull_request_target`. GitHub blocks that trigger by default in public repositories from December 2, 2026. `docs/security.md` has the threat model.
 
+**Extractors** (policy v5)
+
+- **Workflows: a change to what a workflow may do now reads differently from a routine bump.** New evidence:
+  - triggers added or removed, with `privileged_trigger_added` for `pull_request_target`, `workflow_run`, `issue_comment` and similar;
+  - `permissions_widened`, including removing explicit permissions;
+  - new secrets (`secret_exposure_changed`; `GITHUB_TOKEN` excluded);
+  - `untrusted_expression_in_shell` and `privileged_pr_checkout` (both heuristic);
+  - `release_workflow_changed`;
+  - reusable-workflow and local-action references labelled.
+- **Dependencies:**
+  - `vendored_code_changed`: files in a committed `vendor/<pkg>` or `node_modules/<pkg>` changed while the package's locked version didn't. On lawyering this found `vendor/pestphp/pest` edited in PRs #1, #2, #4 and #66.
+  - `dependency_source_changed`: a package moving between registry, git and path sources, or to another host.
+  - `package_replacement_changed`: a package removed and now provided by another package's `replace`. Framework `replace` lists changing on an upgrade don't count.
+  - `dependency_overrides_changed`.
+  - UNKNOWN when a required package is missing from the lockfile. `workspace:`, `catalog:` and `npm:` aliases are skipped.
+- **Migrations:**
+  - foreign keys reported as themselves, with `cascade_delete` for `ON DELETE CASCADE` and `foreign_key_dropped`;
+  - `nullability_tightened` for `->change()` without `->nullable()`, or for `->nullable(false)`;
+  - every operation has a `category`: destructive, structural or data.
+- **Routes:**
+  - `middleware_alias_changed`: an alias remapped or removed in `bootstrap/app.php` or the HTTP kernel, reported even when no route file changed;
+  - route registration outside `routes/` (service providers, `loadRoutesFrom`) is UNKNOWN with file and line, instead of silently missed.
+- **Tests:** malformed-input and adversarial tests for every extractor, including 100 KB pathological lines under a time limit.
+- `docs/extractors.md` gives each extractor's inputs, outputs, UNKNOWN conditions and limits.
+- On Koel the tier distribution is unchanged; on lawyering two PRs move from medium to high (the vendored edits).
+
 **Study**
 
 - **Outcome provenance.** Reverts record `how` (sha, title or a `#N` mention), `confidence` and `restored`; `Revert "Revert …"` and git ≥ 2.43's `Reapply "…"` are both recognised. SZZ candidates record `blamed_lines`.

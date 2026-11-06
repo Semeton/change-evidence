@@ -1,6 +1,6 @@
 {
   "name": "laravel-default",
-  "version": 4,
+  "version": 5,
   "description": "Default risk policy for Laravel applications. Rules only escalate; nothing here lowers a tier. Pattern rules over diff lines are heuristics and are labelled as such in results. Policies, middleware, routes and migrations are matched in standard locations and in modular layouts (app/Modules/*, nwidart Modules/*).",
   "calibration": [
     {
@@ -336,6 +336,64 @@
     },
     "unpinned_action": {
       "dimension": "trust_root",
+      "level": "high"
+    },
+    "privileged_trigger_added": {
+      "dimension": "trust_root",
+      "level": "high"
+    },
+    "permissions_widened": {
+      "dimension": "trust_root",
+      "level": "high"
+    },
+    "secret_exposure_changed": {
+      "dimension": "trust_root",
+      "level": "high"
+    },
+    "untrusted_expression_in_shell": {
+      "dimension": "trust_root",
+      "level": "high",
+      "heuristic": true
+    },
+    "privileged_pr_checkout": {
+      "dimension": "trust_root",
+      "level": "high",
+      "heuristic": true
+    },
+    "release_workflow_changed": {
+      "dimension": "trust_root",
+      "level": "high"
+    },
+    "dependency_source_changed": {
+      "dimension": "security",
+      "level": "high"
+    },
+    "package_replacement_changed": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "dependency_overrides_changed": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "vendored_code_changed": {
+      "dimension": "security",
+      "level": "high"
+    },
+    "cascade_delete": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "foreign_key_dropped": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "nullability_tightened": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "middleware_alias_changed": {
+      "dimension": "security",
       "level": "high"
     }
   },
