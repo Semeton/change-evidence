@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.4.0]
+
+Security: the GitHub integration no longer uses `pull_request_target`. GitHub blocks that trigger by default in public repositories from December 2, 2026. `docs/security.md` has the threat model.
+
+- **Two workflows instead of one.** `change-evidence-trigger.yml` runs on `pull_request` with no permissions and does nothing. `change-evidence.yml` runs on `workflow_run`, from the default branch, and uses nothing the trigger run produced.
+- **New `github-report` command**, run by the reporter workflow:
+  - it validates every event field it uses, and refuses with exit 3 before any API call;
+  - it only reports on an open PR on this repository whose head is exactly the event's commit, cross-checked through the API, and finds fork PRs through the API too;
+  - it fetches the PR as git objects only, passing credentials through the environment rather than argv or `.git/config`;
+  - it posts one comment and an informational `change-evidence` commit status.
+- **Evaluator integrity.** The workflow pins the evaluator's sha512 and verifies the tarball before running it. Nothing is `npm install`ed.
+- **Comment injection fixed.** File paths, route URIs and other PR-controlled strings could close code spans, split table rows, ping users (`@name`) or carry the comment marker. Everything now goes through `lib/markdown.js`.
+- **Sticky comment hijack fixed.** Only the bot's own comment is ever updated; any comment containing the marker used to qualify.
+- `pr` and `change` resolve revisions with `--end-of-options`: a revision like `--upload-pack=…` is refused, not passed to git as an option. Unrelated histories exit 2 with a clear message.
+- **`init` and `upgrade`:**
+  - `init --write` writes both workflows, `init --trigger` prints the trigger, and `init` resolves the published integrity, or takes `--integrity`;
+  - `upgrade` migrates an unmodified 0.1–0.3 workflow to the new pair, moves the pin and integrity together, and warns about edited workflows still on `pull_request_target`.
+- Tests:
+  - end-to-end adversarial tests against a fake GitHub API: hostile names and paths, install scripts, filter drivers, injected branch names, a forged marker, forks, mismatched SHAs, closed PRs and other repositories;
+  - static checks on the workflow templates, each mutation-tested;
+  - edge cases: binary files, renames, deletions, large diffs, unrelated histories.
+
 ## [0.3.0]
 
 0.2.0 was released from `main` before these changes merged; it is the 0.1.x code.
