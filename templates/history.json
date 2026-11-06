@@ -1,9 +1,22 @@
 {
-  "_": "sha256 of each shipped workflow template, pin blanked. Append the new hash whenever templates/change-evidence.yml changes; a test enforces it.",
+  "_": "sha256 of each shipped workflow template, pin and integrity blanked. Append the new hash whenever a template changes; a test enforces it.",
   "templates": [
     {
       "since": "0.1.0",
+      "kind": "workflow",
+      "trigger": "pull_request_target",
       "sha256": "33b1ca9c7e46aee87321bd094d843faa7d3a9c4135d84ede4cf39dbd638dc1fe"
+    },
+    {
+      "since": "0.4.0",
+      "kind": "workflow",
+      "trigger": "workflow_run",
+      "sha256": "29f7bd6096c5584da71ef7eeab01df244f8c6d658affe2e81cbbd8d7bb92faf1"
+    },
+    {
+      "since": "0.4.0",
+      "kind": "trigger",
+      "sha256": "d3b435fa0d184ab3d02a802e16fe3158ff1d172c346111b8878fb0fd5b5dbb0d"
     }
   ]
 }

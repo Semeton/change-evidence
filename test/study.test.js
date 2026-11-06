@@ -63,5 +63,5 @@ test("cli: pr writes report.md and evidence.json and exits 0 in shadow mode", ()
     code = e.status;
   }
   assert.equal(code, 1);
-  assert.match(execFileSync(process.execPath, [bin, "init"], { encoding: "utf8" }), /pull_request_target/);
+  assert.match(execFileSync(process.execPath, [bin, "init", "--integrity", `sha512-${"A".repeat(86)}==`], { encoding: "utf8", env: { ...process.env, CHANGE_EVIDENCE_NO_UPDATE_CHECK: "1" } }), /workflow_run/);
 });

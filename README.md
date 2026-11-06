@@ -12,19 +12,32 @@ It has two modes:
 ## Shadow mode on a GitHub repository
 
 ```bash
-npx @semeton/change-evidence init > .github/workflows/change-evidence.yml
+npx @semeton/change-evidence init --write   # writes two workflows into .github/workflows/
 ```
 
-The workflow:
+Merge both files to the **default branch** in their own PR. Reports start on PRs opened after that.
 
-- runs on `pull_request_target`, so it uses the workflow file **from the base branch**: a PR can't edit the check that judges it;
-- fetches the PR's commits as git objects only, with no checkout and no install;
-- runs a pinned evaluator version from outside the repository;
-- posts one comment per PR (updated on each push), writes the step summary, and keeps `evidence.json` as a 90-day artifact.
+- **`change-evidence-trigger.yml`** runs on `pull_request` with `permissions: {}`. It does nothing; it exists so that a PR causes a workflow run.
+- **`change-evidence.yml`** runs on `workflow_run` when the trigger finishes. GitHub runs it **from the default branch**, so a PR can't edit the workflow that judges it.
 
-It needs `pull-requests: write` for the comment and nothing else. Every Action it uses is pinned to a commit SHA.
+The reporter:
 
-Don't add a step that checks out or runs the PR head to this workflow. `pull_request_target` is safe here only because nothing from the PR executes.
+1. downloads the pinned evaluator version and refuses to run it unless its tarball matches the pinned sha512;
+2. checks out the default branch, never the PR, without persisting credentials;
+3. validates the event, finds the open PR whose head is exactly that commit through the API, and fetches the PR's commits as git objects only;
+4. posts one comment per PR (updated on each push) and an informational `change-evidence` commit status, writes the step summary, and keeps `evidence.json` as a 90-day artifact.
+
+Nothing from the PR is checked out, installed, built or run, and nothing the trigger run produces is used. The reporter's permissions are `contents: read`, `pull-requests: write` and `statuses: write`. Every Action is pinned to a commit SHA. It works for fork PRs, and needs no `pull_request_target` exception: GitHub blocks that trigger by default in public repositories from December 2, 2026.
+
+[`docs/security.md`](docs/security.md) has the threat model, the alternatives considered, the residual risks, and which tests demonstrate each property. The main residual risk: a PR can delete the trigger and so suppress its own report. Make the `change-evidence` status a required check to close that.
+
+**Upgrading from 0.1–0.3** (the single `pull_request_target` workflow):
+
+```bash
+npx @semeton/change-evidence@latest upgrade
+```
+
+An unmodified old workflow is replaced with the new pair. An edited one only gets its pin moved, with a warning; see "Migrating" in `docs/security.md`.
 
 ### Repository overlay (optional)
 
@@ -67,7 +80,7 @@ Run locally, the CLI also prints a notice when a newer version exists. It checks
 
 ```bash
 npx @semeton/change-evidence pr path/to/repo --base <base-sha> --head <head-sha> --out ce/ [--github] [--fail-on high]
-npx @semeton/change-evidence init                      # print the shadow-mode workflow
+npx @semeton/change-evidence init --write              # write the two shadow-mode workflows
 npx @semeton/change-evidence suggest [repo] [--budget 0.2] [--write]
 npx @semeton/change-evidence upgrade [repo] [--to VERSION] [--check]
 npx @semeton/change-evidence study path/to/repo --out study/ [--since 2025-01-01] [--limit 500] [--followup-days 14]

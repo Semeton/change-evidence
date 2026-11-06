@@ -1,76 +1,76 @@
 # change-evidence, shadow mode: reports on every PR, never blocks a merge.
 #
-# Trust model (spec rev 2, job B without the App):
-# - pull_request_target runs THIS file as it is on the base branch, so a PR can't edit
-#   the check that judges it. The policy overlay (.change-evidence.json) is also read
-#   from the base commit.
-# - The PR's code is never checked out, installed, built or run. Its commits are fetched
-#   as git objects and read as data. That's what makes pull_request_target safe here:
-#   do NOT add a step that checks out or executes the PR head.
-# - The evaluator is a pinned npm version, run from outside the repository, so the PR's
-#   .npmrc or package.json can't change what runs.
+# Trust model (docs/security.md has the full threat model):
+# - Two workflows. change-evidence-trigger.yml runs on pull_request with no permissions and
+#   does nothing. When it finishes, GitHub starts THIS workflow via workflow_run, using the
+#   copy on the DEFAULT BRANCH: a PR can't edit the workflow that judges it.
+# - Nothing from the trigger run is consumed. The reporter re-derives everything from the
+#   event GitHub generates, validates it, and cross-checks it against the API (the PR must
+#   be open on this repository with exactly this head commit).
+# - The PR's commits are fetched as git objects and read as data. They are never checked
+#   out, installed, built or run: do NOT add a step that does. The policy overlay
+#   (.change-evidence.json) is read from the base branch tip.
+# - The evaluator is an exact npm version whose tarball must match a pinned sha512 before
+#   it runs. It has no dependencies, so nothing is installed and no install scripts run.
+# - All Actions are pinned to commit SHAs. Credentials aren't persisted to .git/config.
 name: change-evidence
 
 on:
-  pull_request_target:
-    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_run:
+    workflows: [change-evidence-trigger]
+    types: [completed]
 
 permissions:
   contents: read
   pull-requests: write # the sticky report comment
+  statuses: write # an informational "change-evidence" commit status
 
 concurrency:
-  group: change-evidence-${{ github.event.pull_request.number }}
+  group: change-evidence-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
 env:
-  CHANGE_EVIDENCE: "@semeton/change-evidence@0.1.0"
+  CHANGE_EVIDENCE: "@semeton/change-evidence@0.0.0"
+  CHANGE_EVIDENCE_INTEGRITY: "sha512-PLACEHOLDER"
 
 jobs:
-  evaluate:
+  report:
+    if: github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          fetch-depth: 0
-
-      # The PR head as objects only: no checkout, no working tree.
-      - name: Fetch PR commits as data
-        env:
-          PR: ${{ github.event.pull_request.number }}
-        run: git fetch --no-tags origin "+refs/pull/${PR}/head:refs/change-evidence/head"
-
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
 
-      - name: Evaluate
+      - name: Fetch the evaluator and verify it
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir -p change-evidence && cd change-evidence
+          npm pack --json --silent "$CHANGE_EVIDENCE" > pack.json
+          got=$(node -p "require('./pack.json')[0].integrity")
+          if [ "$got" != "$CHANGE_EVIDENCE_INTEGRITY" ]; then
+            echo "::error::$CHANGE_EVIDENCE does not match the pinned integrity (got $got)"
+            exit 1
+          fi
+          tar -xzf "$(node -p "require('./pack.json')[0].filename")"
+
+      # The default branch: never the PR.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Report
         working-directory: ${{ runner.temp }}
         env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
-        run: npx --yes "$CHANGE_EVIDENCE" pr "$GITHUB_WORKSPACE" --base "$BASE" --head "$HEAD" --out "$RUNNER_TEMP/ce" --github
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node change-evidence/package/bin/change-evidence.js github-report --workspace "$GITHUB_WORKSPACE" --out "$RUNNER_TEMP/ce"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
         with:
           name: change-evidence
           path: ${{ runner.temp }}/ce/
+          if-no-files-found: ignore
           retention-days: 90
-
-      # One comment per PR, updated in place on each push.
-      - name: Post report
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          body_file="$RUNNER_TEMP/ce/report.md"
-          printf '\n<!-- change-evidence -->\n' >> "$body_file"
-          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
-            --jq '.[] | select(.body | contains("<!-- change-evidence -->")) | .id' | head -1)
-          if [ -n "$id" ]; then
-            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F "body=@$body_file" > /dev/null
-          else
-            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F "body=@$body_file" > /dev/null
-          fi
