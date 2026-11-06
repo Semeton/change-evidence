@@ -106,13 +106,27 @@ PRs are recovered from git alone: squash merges ending `(#N)` and `Merge pull re
 | routes | Routes added, removed and changed, with full URI, action and accumulated middleware, following nested groups and included route files. Middleware lost, new routes with no auth middleware found (heuristic), and middleware aliases remapped. | A URI, prefix or include path is dynamic, or routes are registered outside `routes/` (named with file and line). |
 | migrations | Tables and columns created, dropped, renamed and retyped, NOT NULL additions and tightened nullability, indexes, foreign keys and cascades, data migrations, edits to shipped migrations. Each operation is categorised as destructive, structural or data. | Raw SQL, non-literal table names, helpers it can't follow. |
 | dependencies | Direct packages added, removed, upgraded (major flagged) or downgraded; install scripts; source moves (registry, git, path, host); real replacements; overrides and resolutions; **vendored code edited without a lockfile change**. | A lockfile can't be read, constraints changed without the lockfile, or a required package is missing from the lockfile. |
+| prisma | Prisma `migration.sql`, statement by statement: tables and columns created, dropped, retyped, renamed, NOT NULL without a default, SET NOT NULL, indexes, foreign keys and cascades, enums, data statements, SQLite table rebuilds, edits to shipped migrations. | A statement it can't classify (functions, DO blocks, extensions), or `schema.prisma` changed with no migration added. |
 | workflows | Action and reusable-workflow references with SHA pinning; triggers added (privileged ones flagged); permissions widened; new secrets; untrusted `${{ github.event.* }}` in shell (heuristic); a privileged workflow referencing PR code (heuristic); release workflows changed. | Tab indentation or several YAML documents. |
 
 [`docs/extractors.md`](docs/extractors.md) has each extractor's inputs, outputs, UNKNOWN conditions and what it doesn't establish.
 
 ## Policy
 
-`policies/laravel.json` holds the default rules, as data:
+There are two built-in policies:
+
+- **`policies/laravel.json`** for Laravel applications.
+- **`policies/node-next.json`** for Node.js applications on Next.js and Prisma, including monorepos. It covers `middleware.ts`, API routes, auth config and auth-sensitive file names, `next.config.*`, the Prisma schema and seeds, raw SQL (`$queryRawUnsafe`), `dangerouslySetInnerHTML`, `child_process`, `eval`, server actions, weakened cookie flags, removed auth checks, `NEXT_PUBLIC_*SECRET`, disabled TLS verification and skipped tests.
+
+Selection, in order of precedence:
+
+1. `--policy FILE`;
+2. `"extends": "laravel" | "node-next"` in the overlay;
+3. detection from the repository: `artisan` and `composer.json` mean Laravel; `next.config.*` or a Prisma schema anywhere means node-next.
+
+If nothing matches, the language-agnostic rules still apply (CI, test harness, infrastructure, dependencies, workflows). The report footer says which policy was used and why, and the report names every extractor that had nothing to read in the repository, so a low result there doesn't read as an all-clear.
+
+`policies/laravel.json` holds these default rules, as data:
 
 - **Path rules**: CI workflows, the test harness, auth config, the HTTP kernel, middleware, policies and infrastructure config.
 - **Pattern rules** over added or removed diff lines: `withoutMiddleware`, `$guarded = []`, raw SQL, `{!!`, removed `authorize()` calls and skipped tests. A match counts only if the PR changes how often the pattern appears in that file, so moving a line isn't new. An optional `unless` regex excuses matching lines (for example a bypass that re-applies `tenant_id` on the same line). Excused matches are counted and shown in the report, never hidden.

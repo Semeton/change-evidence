@@ -70,6 +70,7 @@ External validation needs repositories the policy was never tuned on. So far the
 | monicahq/monica | in-sample | 445 | 0 | 16 † | 25.2% [21.4–29.4] | 87.5% [64.0–96.5] | 12.5% [7.6–19.9] | 62.5% / 93.8% |
 | BookStackApp/BookStack | **out-of-sample** | 435 | 0 | 16 † | 44.4% [39.8–49.1] | 75.0% [50.5–89.8] | 6.2% [3.6–10.6] | 43.8% / 25.0% |
 | semeton/lawyering | **out-of-sample** | 80 | 0 | 8 † | 75.0% [64.5–83.2] | 75.0% [40.9–92.9] | 10.0% [4.7–20.1] | 25.0% / 25.0% |
+| documenso/documenso (node-next v1, last 400 PRs) | **out-of-sample** | 400 | 0 | 37 | 36.8% [32.2–41.6] | 56.8% [40.9–71.3] | 14.3% [9.5–20.9] | 32.4% / 32.4% |
 
 What this supports:
 
@@ -78,6 +79,9 @@ What this supports:
 - **The flagged tiers do contain more positives than the low tier** on Koel: 21.5% (medium) and 22.9% (high) against 7.8% (low). That's a real difference, but most of it is explained by size.
 - **BookStack, the first out-of-sample repository, points the other way**: the tool captures 44% against 25% for size. With 16 positives the intervals overlap heavily, so it's an observation, not a finding.
 - **Review load varies by repository**, from 25% (Monica) to 75% (lawyering, with large agent-written PRs). The built-in size threshold doesn't fit every repository. That's what `suggest` and overlays are for, and it has to be judged on a holdout.
+
+- **Documenso is the first out-of-sample repository with 20+ positives**, run under the node-next policy. The tiers are ordered: 6.3% (low), 12.5% (medium) and 22.2% (high) positive rates. Flagging 37% of PRs captures 57%. At fixed budgets the tool and size are level: worse at 10% (19% against 32%), equal at 20%, slightly ahead at 30% (49% against 43%). That's the clearest evidence so far that flagged PRs carry more risk than unflagged ones. It's also evidence that, as a ranking, the tool isn't better than size.
+- **zap-scan-app is in-sample for node-next.** The policy was written after reviewing the PRs that scored low there (issue #3): all seven are now medium or high, and the low tier fell from 19 to 6 of 32 PRs. That shows the rules express what they were written for, not that they generalise. Documenso is the generalisation check.
 
 What it doesn't support:
 

@@ -4,6 +4,21 @@
 
 Reports now separate observed impact from review priority. The GitHub integration no longer uses `pull_request_target`. GitHub blocks that trigger by default in public repositories from December 2, 2026. `docs/security.md` has the threat model.
 
+**Issues #3, #4: Next.js / Prisma, and saying what wasn't checked**
+
+- **#4:** an extractor whose inputs don't exist anywhere in the repository is `NOT_APPLICABLE`, with the reason. The report says so: next to a low result ("Not checked here: routes, migrations…") and under *Uncertainty and coverage*. `evidence.json` gains a `coverage` map. NOT_APPLICABLE doesn't escalate; it's stated. The study's coverage table no longer counts not-applicable extractors as in scope.
+- **#3: new built-in policy `policies/node-next.json`** for Next.js and Prisma, matching at any depth so monorepos are covered:
+  - middleware, auth config and API routes;
+  - auth-sensitive file names;
+  - `next.config.*`, the Prisma schema and seeds;
+  - raw SQL, `dangerouslySetInnerHTML`, `child_process`, `eval`, server actions, weakened cookie flags, removed auth checks, public secrets, disabled TLS verification and skipped tests.
+
+  It declares zap-scan-app in its calibration register.
+- **Policy selection:** `--policy` first, then `"extends"` in the overlay, then detection from the repository. The report footer states which and why. An unknown `extends` falls back to detection, with an error.
+- **New Prisma migration extractor:** `migration.sql` classified statement by statement with the Laravel extractor's operation names, plus SQLite table rebuilds, edited shipped migrations, and UNKNOWN for a schema change with no migration.
+- Pattern rules skip generated and vendored files. Path rules still see them.
+- **Results.** On zap-scan-app, all seven PRs from #3 are now medium or high, and the low tier fell from 19 to 6 of 32 PRs (in-sample). On Documenso's last 400 PRs (out-of-sample, 37 positives), the tiers are ordered at 6%, 12% and 22% positive rates, and the tool is level with size at fixed budgets. See `docs/validation.md`.
+
 **Issues #5, #6, #7**
 
 - **#5:** `suggest` decides each size threshold on its own. `max_files` is no longer tightened without `--budget` when only lines loosen (zap-scan-app: lines 800 → 1600, files stay at 40). `suggest` now also measures reviewable size, generated files excluded, the same way the size rule does.

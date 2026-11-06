@@ -1,0 +1,637 @@
+{
+  "name": "node-next-default",
+  "version": 1,
+  "description": "Default risk policy for Node.js applications built on Next.js and Prisma. Rules only escalate; nothing here lowers a tier. Pattern rules over diff lines are heuristics and are labelled as such in results. Auth-sensitive file names are matched by name: the fact that such a file changed is observed, the risk is the policy's judgement. Paths match at any depth, so monorepos (apps/*, packages/*) are covered.",
+  "calibration": [
+    {
+      "repository": "semeton/zap-scan-app",
+      "through": "2026-11-06",
+      "note": "this policy was written after reviewing the PRs that scored low on it in issue #3"
+    }
+  ],
+  "tiers": [
+    "low",
+    "medium",
+    "high"
+  ],
+  "on_unknown": "medium",
+  "size": {
+    "max_changed_lines": 800,
+    "max_files": 40,
+    "level": "medium"
+  },
+  "generated": [
+    ".next/**",
+    "out/**",
+    "dist/**",
+    "build/**",
+    "coverage/**",
+    "node_modules/**",
+    "public/build/**",
+    "**/*.min.js",
+    "**/*.min.css",
+    "**/*.map",
+    "next-env.d.ts",
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "bun.lockb",
+    "src/generated/**",
+    "prisma/generated/**",
+    "**/__generated__/**",
+    "**/*.generated.ts"
+  ],
+  "path_rules": [
+    {
+      "id": "next-middleware",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "middleware.ts",
+        "**/middleware.ts",
+        "middleware.js",
+        "**/middleware.js",
+        "src/middleware.ts",
+        "**/src/middleware.ts",
+        "src/middleware.js",
+        "**/src/middleware.js"
+      ]
+    },
+    {
+      "id": "auth-config",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "auth.ts",
+        "**/auth.ts",
+        "auth.config.ts",
+        "**/auth.config.ts",
+        "src/auth.ts",
+        "**/src/auth.ts",
+        "src/auth.config.ts",
+        "**/src/auth.config.ts",
+        "**/*nextauth*/**",
+        "**/api/auth/**"
+      ]
+    },
+    {
+      "id": "api-routes",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "pages/api/**",
+        "**/pages/api/**",
+        "src/pages/api/**",
+        "**/src/pages/api/**",
+        "app/**/route.ts",
+        "**/app/**/route.ts",
+        "app/**/route.js",
+        "**/app/**/route.js",
+        "src/app/**/route.ts",
+        "**/src/app/**/route.ts",
+        "src/app/**/route.js",
+        "**/src/app/**/route.js"
+      ]
+    },
+    {
+      "id": "auth-sensitive-names",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "**/*[Aa]uth*.ts",
+        "**/*[Aa]uth*.tsx",
+        "**/*[Aa]uth*.js",
+        "**/*[Aa]uth*.jsx",
+        "**/*[Aa]uth*.mjs",
+        "**/*[Ss]ession*.ts",
+        "**/*[Ss]ession*.tsx",
+        "**/*[Ss]ession*.js",
+        "**/*[Ss]ession*.jsx",
+        "**/*[Ss]ession*.mjs",
+        "**/*[Cc]rypto*.ts",
+        "**/*[Cc]rypto*.tsx",
+        "**/*[Cc]rypto*.js",
+        "**/*[Cc]rypto*.jsx",
+        "**/*[Cc]rypto*.mjs",
+        "**/*[Pp]assword*.ts",
+        "**/*[Pp]assword*.tsx",
+        "**/*[Pp]assword*.js",
+        "**/*[Pp]assword*.jsx",
+        "**/*[Pp]assword*.mjs",
+        "**/*[Tt]oken*.ts",
+        "**/*[Tt]oken*.tsx",
+        "**/*[Tt]oken*.js",
+        "**/*[Tt]oken*.jsx",
+        "**/*[Tt]oken*.mjs",
+        "**/*[Jj]wt*.ts",
+        "**/*[Jj]wt*.tsx",
+        "**/*[Jj]wt*.js",
+        "**/*[Jj]wt*.jsx",
+        "**/*[Jj]wt*.mjs",
+        "**/*[Oo][Aa]uth*.ts",
+        "**/*[Oo][Aa]uth*.tsx",
+        "**/*[Oo][Aa]uth*.js",
+        "**/*[Oo][Aa]uth*.jsx",
+        "**/*[Oo][Aa]uth*.mjs",
+        "**/*[Pp]ermission*.ts",
+        "**/*[Pp]ermission*.tsx",
+        "**/*[Pp]ermission*.js",
+        "**/*[Pp]ermission*.jsx",
+        "**/*[Pp]ermission*.mjs",
+        "**/*[Rr]ole*.ts",
+        "**/*[Rr]ole*.tsx",
+        "**/*[Rr]ole*.js",
+        "**/*[Rr]ole*.jsx",
+        "**/*[Rr]ole*.mjs",
+        "**/*[Cc]srf*.ts",
+        "**/*[Cc]srf*.tsx",
+        "**/*[Cc]srf*.js",
+        "**/*[Cc]srf*.jsx",
+        "**/*[Cc]srf*.mjs",
+        "**/*[Tt]wo[Ff]actor*.ts",
+        "**/*[Tt]wo[Ff]actor*.tsx",
+        "**/*[Tt]wo[Ff]actor*.js",
+        "**/*[Tt]wo[Ff]actor*.jsx",
+        "**/*[Tt]wo[Ff]actor*.mjs",
+        "**/*two-factor*.ts",
+        "**/*two-factor*.tsx",
+        "**/*two-factor*.js",
+        "**/*two-factor*.jsx",
+        "**/*two-factor*.mjs",
+        "**/*[Rr]ate[Ll]imit*.ts",
+        "**/*[Rr]ate[Ll]imit*.tsx",
+        "**/*[Rr]ate[Ll]imit*.js",
+        "**/*[Rr]ate[Ll]imit*.jsx",
+        "**/*[Rr]ate[Ll]imit*.mjs",
+        "**/*rate-limit*.ts",
+        "**/*rate-limit*.tsx",
+        "**/*rate-limit*.js",
+        "**/*rate-limit*.jsx",
+        "**/*rate-limit*.mjs",
+        "**/*[Ss]ecurity*.ts",
+        "**/*[Ss]ecurity*.tsx",
+        "**/*[Ss]ecurity*.js",
+        "**/*[Ss]ecurity*.jsx",
+        "**/*[Ss]ecurity*.mjs"
+      ]
+    },
+    {
+      "id": "next-config",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "next.config.js",
+        "**/next.config.js",
+        "next.config.mjs",
+        "**/next.config.mjs",
+        "next.config.ts",
+        "**/next.config.ts",
+        "vercel.json",
+        "**/vercel.json"
+      ]
+    },
+    {
+      "id": "prisma-schema",
+      "dimension": "data",
+      "level": "medium",
+      "paths": [
+        "prisma/schema.prisma",
+        "**/prisma/schema.prisma",
+        "**/schema.prisma",
+        "prisma/schema/**",
+        "**/prisma/schema/**"
+      ]
+    },
+    {
+      "id": "seed-data",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "prisma/seed.ts",
+        "**/prisma/seed.ts",
+        "prisma/seed.js",
+        "**/prisma/seed.js",
+        "prisma/seed/**",
+        "**/prisma/seed/**",
+        "**/seeds/**",
+        "**/seeders/**",
+        "**/*.seed.ts"
+      ]
+    },
+    {
+      "id": "migrations-any",
+      "dimension": "data",
+      "level": "low",
+      "paths": [
+        "prisma/migrations/**",
+        "**/prisma/migrations/**",
+        "migrations/**",
+        "**/migrations/**",
+        "db/migrations/**",
+        "**/db/migrations/**"
+      ]
+    },
+    {
+      "id": "infra",
+      "dimension": "operational",
+      "level": "medium",
+      "paths": [
+        "Dockerfile*",
+        "docker-compose*",
+        "docker/**",
+        ".env.example",
+        ".env.*.example",
+        "**/*.sh",
+        "Procfile",
+        "fly.toml",
+        "render.yaml",
+        "railway.json",
+        "ecosystem.config.*",
+        "k8s/**",
+        "helm/**",
+        "terraform/**"
+      ]
+    },
+    {
+      "id": "ci",
+      "dimension": "trust_root",
+      "level": "high",
+      "paths": [
+        ".github/workflows/**",
+        ".github/actions/**",
+        ".github/CODEOWNERS",
+        "CODEOWNERS"
+      ]
+    },
+    {
+      "id": "test-harness",
+      "dimension": "trust_root",
+      "level": "high",
+      "paths": [
+        "jest.config.*",
+        "**/jest.config.*",
+        "jest.setup.*",
+        "**/jest.setup.*",
+        "vitest.config.*",
+        "**/vitest.config.*",
+        "vitest.setup.*",
+        "**/vitest.setup.*",
+        "vitest.workspace.*",
+        "**/vitest.workspace.*",
+        "playwright.config.*",
+        "**/playwright.config.*",
+        "cypress.config.*",
+        "**/cypress.config.*",
+        ".mocharc*"
+      ]
+    },
+    {
+      "id": "static-analysis-config",
+      "dimension": "trust_root",
+      "level": "medium",
+      "paths": [
+        "tsconfig.json",
+        "tsconfig.*.json",
+        ".eslintrc*",
+        "eslint.config.*",
+        "biome.json",
+        "biome.jsonc"
+      ]
+    }
+  ],
+  "deleted_path_rules": [
+    {
+      "id": "tests-deleted",
+      "dimension": "trust_root",
+      "level": "medium",
+      "paths": [
+        "**/*.test.*",
+        "**/*.spec.*",
+        "**/__tests__/**",
+        "tests/**",
+        "test/**",
+        "e2e/**"
+      ]
+    }
+  ],
+  "pattern_rules": [
+    {
+      "id": "raw-sql-unsafe",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.mjs",
+        "**/*.cjs"
+      ],
+      "added": "\\$(queryRawUnsafe|executeRawUnsafe)\\s*\\(|Prisma\\.raw\\s*\\("
+    },
+    {
+      "id": "raw-sql",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.mjs",
+        "**/*.cjs"
+      ],
+      "added": "\\$(queryRaw|executeRaw)\\s*\\(|\\.raw\\s*\\(\\s*[`'\"]"
+    },
+    {
+      "id": "unescaped-html",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.mjs",
+        "**/*.cjs"
+      ],
+      "added": "dangerouslySetInnerHTML|\\.innerHTML\\s*="
+    },
+    {
+      "id": "child-process",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.mjs",
+        "**/*.cjs"
+      ],
+      "added": "(?:from|require\\()\\s*['\"](?:node:)?child_process['\"]|\\b(?:execSync|spawnSync|execFileSync)\\s*\\("
+    },
+    {
+      "id": "dynamic-code",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.mjs",
+        "**/*.cjs"
+      ],
+      "added": "\\beval\\s*\\(|new\\s+Function\\s*\\(|vm\\.runIn"
+    },
+    {
+      "id": "server-action-added",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.mjs",
+        "**/*.cjs"
+      ],
+      "added": "^\\s*['\"]use server['\"]"
+    },
+    {
+      "id": "cookie-flags-weakened",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.mjs",
+        "**/*.cjs"
+      ],
+      "added": "httpOnly\\s*:\\s*false|secure\\s*:\\s*false|sameSite\\s*:\\s*['\"]none['\"]"
+    },
+    {
+      "id": "authentication-removed",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.mjs",
+        "**/*.cjs"
+      ],
+      "removed": "\\bjwtVerify\\s*\\(|\\bjwt\\.verify\\s*\\(|getServerSession\\s*\\(|\\bawait\\s+auth\\s*\\(\\s*\\)|\\bgetToken\\s*\\(|verifyToken\\s*\\(|requireAuth\\s*\\(|\\bcurrentUser\\s*\\("
+    },
+    {
+      "id": "jwt-decoded-unverified",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.mjs",
+        "**/*.cjs"
+      ],
+      "added": "\\bjwt\\.decode\\s*\\(|\\bdecodeJwt\\s*\\("
+    },
+    {
+      "id": "public-secret",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "**"
+      ],
+      "added": "NEXT_PUBLIC_[A-Z0-9_]*(SECRET|PRIVATE|PASSWORD|TOKEN|API_KEY)"
+    },
+    {
+      "id": "cors-wildcard",
+      "dimension": "security",
+      "level": "medium",
+      "paths": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.mjs",
+        "**/*.cjs"
+      ],
+      "added": "Access-Control-Allow-Origin['\"]?\\s*[:,]\\s*['\"]\\*['\"]|origin\\s*:\\s*['\"]\\*['\"]"
+    },
+    {
+      "id": "tls-verification-off",
+      "dimension": "security",
+      "level": "high",
+      "paths": [
+        "**"
+      ],
+      "added": "rejectUnauthorized\\s*:\\s*false|NODE_TLS_REJECT_UNAUTHORIZED"
+    },
+    {
+      "id": "test-skipped",
+      "dimension": "trust_root",
+      "level": "medium",
+      "paths": [
+        "**/*.test.*",
+        "**/*.spec.*",
+        "**/__tests__/**",
+        "tests/**",
+        "test/**",
+        "e2e/**"
+      ],
+      "added": "\\b(?:it|test|describe)\\.(?:skip|only)\\s*\\(|\\bx(?:it|describe)\\s*\\("
+    },
+    {
+      "id": "assertion-removed",
+      "dimension": "trust_root",
+      "level": "low",
+      "paths": [
+        "**/*.test.*",
+        "**/*.spec.*",
+        "**/__tests__/**"
+      ],
+      "removed": "\\bexpect\\s*\\("
+    }
+  ],
+  "evidence_rules": {
+    "security_middleware_removed": {
+      "dimension": "security",
+      "level": "high"
+    },
+    "unauthenticated_route": {
+      "dimension": "security",
+      "level": "medium",
+      "heuristic": true
+    },
+    "middleware_changed": {
+      "dimension": "security",
+      "level": "medium"
+    },
+    "destructive": {
+      "dimension": "data",
+      "level": "high"
+    },
+    "migration_edited": {
+      "dimension": "data",
+      "level": "high"
+    },
+    "not_null_without_default": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "column_type_change": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "rename": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "data_migration": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "new_direct_dependency": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "major_upgrade": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "dependency_downgrade": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "install_script": {
+      "dimension": "security",
+      "level": "high"
+    },
+    "unlocked_dependencies": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "index_change_existing_table": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "unpinned_action": {
+      "dimension": "trust_root",
+      "level": "high"
+    },
+    "privileged_trigger_added": {
+      "dimension": "trust_root",
+      "level": "high"
+    },
+    "permissions_widened": {
+      "dimension": "trust_root",
+      "level": "high"
+    },
+    "secret_exposure_changed": {
+      "dimension": "trust_root",
+      "level": "high"
+    },
+    "untrusted_expression_in_shell": {
+      "dimension": "trust_root",
+      "level": "high",
+      "heuristic": true
+    },
+    "privileged_pr_checkout": {
+      "dimension": "trust_root",
+      "level": "high",
+      "heuristic": true
+    },
+    "release_workflow_changed": {
+      "dimension": "trust_root",
+      "level": "high"
+    },
+    "dependency_source_changed": {
+      "dimension": "security",
+      "level": "high"
+    },
+    "package_replacement_changed": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "dependency_overrides_changed": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "vendored_code_changed": {
+      "dimension": "security",
+      "level": "high"
+    },
+    "cascade_delete": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "foreign_key_dropped": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "nullability_tightened": {
+      "dimension": "data",
+      "level": "medium"
+    },
+    "middleware_alias_changed": {
+      "dimension": "security",
+      "level": "high"
+    }
+  },
+  "op_rules": {
+    "route_removed": {
+      "dimension": "structural",
+      "level": "medium"
+    },
+    "route_added": {
+      "dimension": "structural",
+      "level": "low"
+    }
+  }
+}
