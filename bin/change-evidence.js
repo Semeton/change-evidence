@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const { runStudy, analyseChange, toCsv, summarize } = require("../lib/study");
 const { compile } = require("../lib/risk");
-const { policyFor, OVERLAY } = require("../lib/policy");
+const { policyFor, applyOverlay, OVERLAY } = require("../lib/policy");
 const { renderPr } = require("../lib/report");
 const { git, resolveCommit } = require("../lib/git");
 const { suggest } = require("../lib/suggest");
@@ -32,12 +32,13 @@ Usage: change-evidence <command> [options]
       with exactly that head commit, fetches it as git objects, evaluates it, and posts one
       comment and an informational commit status. Exit 3 means input was refused.
 
-  suggest [repo] [--budget 0.2] [--write] [--force]
+  suggest [repo] [--budget 0.2] [--write] [--force] [--ref REF]
       Propose a ${OVERLAY} for this repository: a size threshold from its own PR history,
       policy and middleware folders the defaults miss, global (tenant) scopes, and payment
       code. Size is only loosened when the default flags more than --budget (default 0.2)
       of your PRs; pass --budget to tighten it too. --write saves it; review it, then
-      commit it in its own PR.
+      commit it in its own PR. --ref reads history up to that commit only: use the
+      development-split cut that \`study\` prints, so the holdout stays unseen.
 
   upgrade [repo] [--to VERSION] [--integrity sha512-…] [--check] [--workflow FILE]
       Move the workflow's pinned version and integrity to the latest release (or --to). A
@@ -46,12 +47,14 @@ Usage: change-evidence <command> [options]
       out of date. Run it with the latest CLI: npx @semeton/change-evidence@latest upgrade
 
   study <repo> [--out DIR] [--since DATE] [--limit N] [--policy FILE] [--followup-days N] [--ref REF]
-               [--holdout 0.3] [--repository owner/name]
+               [--holdout 0.3] [--repository owner/name] [--overlay FILE | --no-overlay]
                [--export-sample FILE [--sample 60] [--seed 1]] [--labels FILE [--labels-key FILE]]
       Replay merged PRs; write study.csv, study.json and summary.md: precision, recall,
       false-positive and false-negative rates and capture at fixed budgets, each with a
       Wilson 95% interval, for a strict and an inclusive proxy label, over a chronological
-      development/holdout split. --export-sample writes a blind, tier-stratified sample for
+      development/holdout split. The repository overlay at --ref is applied, like \`pr\`;
+      --overlay FILE measures a local, uncommitted one; --no-overlay the built-in alone.
+      --export-sample writes a blind, tier-stratified sample for
       human labelling (and a key to keep back); --labels reads it back and compares.
 
   change <repo> <base> <head> [--policy FILE]
@@ -61,7 +64,7 @@ Options: -h, --help   show this help        -v, --version   print the version
 
 Exit codes: 0 ok · 1 tier at or above --fail-on, upgrade --check found a newer version, or github-report failed · 2 usage or repository error · 3 github-report refused its input`;
 
-const FLAGS = new Set(["help", "github", "version", "write", "force", "check", "trigger", "no-status"]);
+const FLAGS = new Set(["help", "github", "version", "write", "force", "check", "trigger", "no-status", "no-overlay"]);
 const SHORT = { h: "help", v: "version" };
 
 function args(argv) {
@@ -206,13 +209,14 @@ async function main(argv) {
 
   if (cmd === "suggest") {
     const cwd = repoDir(repo);
-    const { policy } = policyFor(cwd, "HEAD", { policyFile: opt.policy, overlayFile: opt.overlay });
+    const ref = resolveCommit(cwd, opt.ref || "HEAD");
+    const { policy } = policyFor(cwd, ref, { policyFile: opt.policy, overlayFile: opt.overlay });
     const budget = opt.budget ? Number(opt.budget) : 0.2;
     if (!(budget > 0 && budget < 1)) {
       console.error("--budget is a share between 0 and 1, e.g. 0.2");
       return 2;
     }
-    const s = suggest(cwd, policy, { budget, budgetGiven: opt.budget !== undefined });
+    const s = suggest(cwd, policy, { ref, budget, budgetGiven: opt.budget !== undefined });
     for (const n of s.notes) console.error(`- ${n}`);
     if (!s.overlay) {
       console.error(`\nNothing to suggest: the defaults fit this repository.`);
@@ -251,7 +255,7 @@ async function main(argv) {
     const result = analyseChange(cwd, mergeBase, headSha, compile(policy), { policyBase: baseSha });
     const mode = opt["fail-on"] ? "enforce" : "shadow";
     const md = renderPr({ result, base: mergeBase, head: headSha, policy, version: VERSION, mode, policyError: error });
-    const json = { version: 1, evaluator: VERSION, mode, base: mergeBase, head: headSha, policy: { name: policy.name, version: policy.version, overlay: policy.overlay || null }, files: result.files.length, lines: result.lines, risk: result.risk, evidence: result.evidence };
+    const json = { version: 1, evaluator: VERSION, mode, base: mergeBase, head: headSha, policy: { name: policy.name, version: policy.version, overlay: policy.overlay || null }, files: result.files.length, lines: result.lines, coverage: result.coverage, risk: result.risk, evidence: result.evidence };
     const out = path.resolve(opt.out || ".");
     fs.mkdirSync(out, { recursive: true });
     fs.writeFileSync(path.join(out, "report.md"), md);
@@ -287,7 +291,27 @@ async function main(argv) {
       console.error("--holdout is the share of the latest PRs to hold out, between 0 and 1");
       return 2;
     }
-    const policy = loadPolicy(opt.policy);
+    // The policy a study measures: the built-in (or --policy) plus the repository overlay.
+    // Default: .change-evidence.json as committed at --ref, as `pr` would use it.
+    // --overlay FILE: a local file (e.g. what `suggest` just printed), not yet committed.
+    // --no-overlay: the built-in policy alone.
+    let policy;
+    if (opt["no-overlay"]) policy = loadPolicy(opt.policy);
+    else if (opt.overlay) {
+      const file = path.resolve(opt.overlay);
+      let overlay;
+      try {
+        overlay = JSON.parse(fs.readFileSync(file, "utf8"));
+      } catch (e) {
+        console.error(`--overlay ${opt.overlay}: ${e.message}`);
+        return 2;
+      }
+      policy = applyOverlay(loadPolicy(opt.policy), overlay, `file:${relPath(process.cwd(), file)}`);
+    } else {
+      const r = policyFor(cwd, resolveCommit(cwd, opt.ref || "HEAD"), { policyFile: opt.policy });
+      if (r.error) console.error(`! ${r.error}; using the built-in policy`);
+      policy = r.policy;
+    }
     const started = Date.now();
     const study = runStudy(cwd, {
       ref: opt.ref || "HEAD",
