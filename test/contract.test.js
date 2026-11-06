@@ -37,7 +37,7 @@ test("every extractor's output meets the contract on ordinary, empty, malformed 
     t.g("checkout", "-q", "-B", name, base);
     const head = t.commit(name, files);
     const r = analyseChange(t.dir, base, head, policy);
-    assert.equal(r.evidence.length, 4, name);
+    assert.equal(r.evidence.length, require("../lib/study").EXTRACTORS.length, name);
     for (const e of r.evidence) assert.deepEqual(validateResult(e), [], `${name}/${e.extractor}`);
   }
 });

@@ -255,7 +255,7 @@ async function main(argv) {
     const result = analyseChange(cwd, mergeBase, headSha, compile(policy), { policyBase: baseSha });
     const mode = opt["fail-on"] ? "enforce" : "shadow";
     const md = renderPr({ result, base: mergeBase, head: headSha, policy, version: VERSION, mode, policyError: error });
-    const json = { version: 1, evaluator: VERSION, mode, base: mergeBase, head: headSha, policy: { name: policy.name, version: policy.version, overlay: policy.overlay || null }, files: result.files.length, lines: result.lines, risk: result.risk, evidence: result.evidence };
+    const json = { version: 1, evaluator: VERSION, mode, base: mergeBase, head: headSha, policy: { name: policy.name, version: policy.version, overlay: policy.overlay || null }, files: result.files.length, lines: result.lines, coverage: result.coverage, risk: result.risk, evidence: result.evidence };
     const out = path.resolve(opt.out || ".");
     fs.mkdirSync(out, { recursive: true });
     fs.writeFileSync(path.join(out, "report.md"), md);

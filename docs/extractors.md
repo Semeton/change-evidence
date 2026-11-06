@@ -108,6 +108,33 @@ Syntax shows what's asked for, not what it costs.
 - several locked versions of one npm package (the first is used);
 - what an install script does.
 
+## Prisma (`lib/extractors/prisma.js`)
+
+**Reads:** `**/prisma/migrations/<name>/*.sql` and `schema.prisma` (or `prisma/schema/*.prisma`), at any depth, so monorepos are covered.
+
+**Establishes, for each added migration, statement by statement** (split outside quotes, comments, dollar-quoted bodies and parentheses), using the same operation names and risks as the Laravel extractor, so one policy rule covers both:
+
+- `CREATE` and `DROP TABLE`, and `ADD COLUMN` (`not_null_without_default` on an existing table);
+- `DROP COLUMN`, `ALTER COLUMN … TYPE` (`column_type_change`), `SET NOT NULL` (`nullability_tightened`), `RENAME`;
+- indexes (`index_change_existing_table`);
+- foreign keys (`cascade_delete`, `foreign_key_dropped`);
+- enum types;
+- `INSERT`, `UPDATE` and `DELETE` (`data_migration`), and `TRUNCATE` (`destructive`);
+- SQLite's table rebuild (`PRAGMA foreign_keys=OFF` … `RENAME TO`), reported as one `table_rebuilt`, not as a drop;
+- an existing migration edited, renamed or deleted (`migration_edited`).
+
+**UNKNOWN when:**
+
+- a statement can't be classified (extensions, functions, `DO` blocks, triggers, grants);
+- `schema.prisma` changed in its models, enums, types or views with no migration added, and the repository has a migrations directory: the database change isn't recorded (`db push`, or a migration still to come). Comment-only changes don't count.
+
+**Doesn't establish:**
+
+- whether a migration is safe;
+- lock duration;
+- database-specific semantics beyond the statement text;
+- migrations of other ORMs (Drizzle, TypeORM, Knex): only path rules see those.
+
 ## Workflows (`lib/extractors/workflows.js`)
 
 **Reads:** `.github/workflows/*.yml` and `.github/actions/**`, as text, not parsed YAML.
