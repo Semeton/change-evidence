@@ -4,6 +4,26 @@
 
 Reports now separate observed impact from review priority. The GitHub integration no longer uses `pull_request_target`. GitHub blocks that trigger by default in public repositories from December 2, 2026. `docs/security.md` has the threat model.
 
+**Policy, suggest and contracts**
+
+- **A policy-health section in the study summary:**
+  - rules in the policy against rules that fired, and which never did;
+  - which rules most often decided a high priority;
+  - rules firing on under 1% of PRs;
+  - rules whose positive rate is significantly below the base rate (20+ PRs);
+  - UNKNOWNs by extractor.
+
+  It's a maintenance view, never grounds to disable a rule on its own.
+- **`suggest` proposes:**
+  - web-server config (`.htaccess`, `web.config`, nginx, Caddy) at security medium;
+  - deploy and infrastructure files the defaults miss (Procfile, k8s, terraform, fly, deploy scripts);
+  - gates registered outside policy folders (`Gate::define` in a service provider).
+
+  It also notes custom middleware aliases, and how many existing global-scope bypasses there are, and how many re-apply `tenant_id`. It never proposes an exception to the tenant boundary itself. "Current threshold" now replaces "default" where an overlay already sets size.
+- **Evidence contract:** every result carries `ecosystem`, and `validateResult()` checks the shared shape, including that unknowns are never reported as PASS. Tests run it over every extractor on ordinary, empty, malformed and hostile changes. An extractor that throws now goes through `result()`, and a test shows it escalates.
+- `docs/architecture.md`: the seven stages, the evidence contract, and what adding a second ecosystem involves.
+- `docs/integration-repo-memory.md`: a proposed, unimplemented contract for surfacing accepted repository decisions in the report. It's read from a committed index at the base tip, never affects priority, and never judges compliance.
+
 **Extractors** (policy v5)
 
 - **Workflows: a change to what a workflow may do now reads differently from a routine bump.** New evidence:
