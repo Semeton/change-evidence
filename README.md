@@ -148,45 +148,17 @@ The report's sections are:
 5. *uncertainty and coverage*;
 6. the full decision trace.
 
-## Outcome labels
+## Validation
 
-Both labels are proxies.
+`study` is a validation instrument, and [`docs/validation.md`](docs/validation.md) has the method and the results in full. In brief:
 
-- **reverted**: a later commit on the main line reverts the PR, matched by "This reverts commit <sha>", by a `#N` reference, or by the reverted title.
-- **fix_followup**: a later `fix` PR within the window deletes or modifies lines this PR introduced (SZZ: `git blame -w` on the fix's base, test and lock files excluded). It misses fixes that only add lines and fixes not typed `fix`.
+- **Two proxy labels.** *strict* counts only confirmed reverts and excludes anything ambiguous. *inclusive* adds low-confidence reverts and SZZ fix candidates. Fixes count whether they came through a PR or were pushed directly. Every outcome records how it was found.
+- **Metrics:** precision, recall, false-positive and false-negative rates, and capture at fixed review budgets against size-only and random baselines, each with a Wilson 95% interval. Results resting on fewer than 20 positives are marked exploratory.
+- **Holdout and calibration:** a chronological development/holdout split, plus a calibration register in the policy, so a repository whose history was used to tune the policy is reported as in-sample.
+- **Blind human labels:** `--export-sample` writes a tier-stratified sample with no tool output, for independent labelling; `--labels` reads it back.
+- **Reproducible:** identical runs give byte-identical output.
 
-## Results: two Laravel repositories
-
-Policy v2, all merged PRs recovered from history. Bad outcome means reverted or SZZ-linked to a later `fix` PR within 14 days.
-
-| | [koel/koel](https://github.com/koel/koel) | [monicahq/monica](https://github.com/monicahq/monica) |
-|---|---:|---:|
-| PRs, period | 1,392, 2015–2026 | 445, 2023–2026 |
-| Mix | feat/fix, one main author | 58% bot dependency PRs |
-| Bad-outcome base rate | 8.9% | 3.8% |
-| Low tier: share / bad rate | 73% / 5.9% | 74% / 0.6% |
-| Medium + high: review load / capture | 27% / 52% | 26% / 88% |
-| Same load by size alone: capture | 66% | 82% |
-| Replay time | ~100 s | ~40 s |
-
-What holds across both:
-
-- **The low tier is safe to skim.** Three quarters of PRs land there, and they carry a third (Koel) to a tenth (Monica) of the bad-outcome rate of the flagged ones.
-- **Size is the strongest single signal, and the size threshold is a budget choice.** Precision stays flat from 250 to 2,000 lines (about 17% on Koel, 12% on Monica). Lowering the threshold buys capture at the same hit rate. `summary.md` prints the sweep, so each team can pick its own point.
-
-What doesn't hold:
-
-- **Whether the other rules add anything beyond size.** On Koel, flagged and unflagged PRs of the same size fail at the same rate below 800 lines. On Monica the flagged ones fail more in every band under 250 lines, but that rests on 5 bad PRs. Two samples, two answers: this stays open until a third repository or a larger window.
-
-Calibration from v1 to v2, each change measured before it was kept:
-
-- `bootstrap/app.php` became a pattern rule over middleware and CSRF calls. Koel hits dropped from 23 to 3, all three real middleware changes.
-- `index_change_existing_table` (medium): 28 Koel PRs at a 25% bad rate against an 8.9% base. It now catches #2511, a revert that v1 missed.
-- Parser fixes: PHP method names are case-insensitive (`$table->datetime()`), and an unreadable middleware entry is recorded as `<dynamic>` instead of making every route under it UNKNOWN. Monica's route UNKNOWN rate went from 29% to 0%.
-
-The trust-root cost is the CI rule. On Monica, 43 of 59 high-tier PRs are high because of the CI rule alone, and 21 of those only move `uses:` refs. The tier stays high: an Action version bump is a supply-chain change. Instead, the workflow extractor makes the review a glance. It lists each Action whose ref moved, from which ref to which, and whether the new ref is pinned to a SHA. `workflow_only_action_bumps` in the CSV marks PRs that change nothing else. Between them, the two repositories introduced 38 unpinned Action refs.
-
-The consequence rules (security, data, trust root) aren't meant to predict bugs. A defect proxy can show what they cost in review load, not whether they're right; #2534, an edit to a migration that had already shipped, is the kind of change they exist for.
+**What four repositories show** (Koel and Monica in-sample; BookStack and lawyering out-of-sample): confirmed reverts are too rare to validate anything (4 in 2,352 PRs). On the one non-exploratory result, Koel's inclusive label, ranking by size alone captures more positives at a fixed budget than ranking by the tool: 57% against 34% at 20%. BookStack, the first out-of-sample repository, points the other way, but on 16 positives. **Nothing yet supports claiming the tool predicts defective PRs.** Its value so far is routing by consequence and showing the reviewer where to look. Measuring that needs human labels, which is the next step.
 
 ## Development
 

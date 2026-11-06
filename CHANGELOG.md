@@ -4,6 +4,24 @@
 
 Reports now separate observed impact from review priority. The GitHub integration no longer uses `pull_request_target`. GitHub blocks that trigger by default in public repositories from December 2, 2026. `docs/security.md` has the threat model.
 
+**Study**
+
+- **Outcome provenance.** Reverts record `how` (sha, title or a `#N` mention), `confidence` and `restored`; `Revert "Revert …"` and git ≥ 2.43's `Reapply "…"` are both recognised. SZZ candidates record `blamed_lines`.
+- **Two labels.** *strict* counts only confirmed reverts that stayed reverted, and excludes and counts everything ambiguous. *inclusive* counts any revert or SZZ candidate.
+- **Fix: SZZ never labelled merge-commit PRs.** Blame names the branch's commits, not the merge, so BookStack and lawyering got no labels at all. They're now mapped back to the PR.
+- **Fixes pushed directly to the main line now count**, not only fix PRs. Koel had 394 such fix commits, BookStack 219.
+- **Metrics:** precision, recall, false-positive and false-negative rates, and capture at 10/20/30% budgets against size-only and random baselines, all with Wilson 95% intervals. Results resting on fewer than 20 positives are marked †, exploratory.
+- **Validity:**
+  - a chronological holdout (`--holdout`, default 0.3);
+  - a `calibration` register in the policy (Koel and Monica, through 2026-11-03), so in-sample results are labelled as such;
+  - `--repository` to override the repository detected from the origin remote.
+- **Per-rule analysis** adds sole escalations (the review load a rule adds by itself) and lift over size; rules that never fired are listed.
+- **Blind labelling:** `--export-sample FILE [--sample 60] [--seed 1]` writes a tier-stratified sample with no tool output, plus a key to keep back. `--labels FILE` reads the judgements and reports per-tier risky rates, a weighted capture estimate, and agreement with the tool and the proxies.
+- **Reproducible:** no wall-clock time in the output; identical runs give identical bytes.
+- **Size bands and baselines use reviewable lines**, excluding generated files.
+- **CSV:** new columns (`revert_how`, `revert_confidence`, `revert_restored`, `szz_blamed_lines`, `label_strict`, `label_inclusive`, `counted_lines`, `split`) are appended after the existing ones. `study.json` is version 2.
+- `docs/validation.md` covers the method, limits and results on four repositories.
+
 **Reports**
 
 - **Observed impact and review priority are separate.** The report opens with the priority and exactly which rules and dimensions decided it. A low result states that low is not a finding of safety. The remaining sections are *where to look*, *observed impact* (counts only), per-dimension evidence, *uncertainty and coverage*, and a full decision trace.
