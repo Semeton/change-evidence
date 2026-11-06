@@ -101,14 +101,14 @@ PRs are recovered from git alone: squash merges ending `(#N)` and `Merge pull re
 
 ## What it extracts (Laravel)
 
-| Extractor | Reads | Reports | UNKNOWN when |
-|---|---|---|---|
-| routes | `routes/**/*.php`, statically | added, removed and changed routes, each with its full URI, action and accumulated middleware; follows `prefix/middleware/name()->group()` and `Route::group([...])` nesting; marks routes inside `if` blocks as conditional | a non-literal URI, a group loaded from another file, a dynamic prefix or domain |
-| migrations | `up()` of added or changed migrations | tables created, dropped and renamed; columns added (NOT NULL without a default on an existing table is flagged), dropped, renamed and retyped; indexes; data migrations; edits to an already-shipped migration | raw SQL, non-literal table names, helper calls it can't follow |
-| workflows | `.github/workflows`, `.github/actions` | each Action added, removed or re-pinned (old → new ref, SHA-pinned or not), and how many non-`uses:` lines changed | — |
-| dependencies | composer.lock, pnpm-lock.yaml (v5–9), yarn.lock (v1 and berry), package-lock.json (v1–3) | direct dependencies added, removed, upgraded (major flagged) and downgraded; install scripts; transitive changes as counts | a manifest's constraints changed without its lockfile |
+| Extractor | Establishes | UNKNOWN when |
+|---|---|---|
+| routes | Routes added, removed and changed, with full URI, action and accumulated middleware, following nested groups and included route files. Middleware lost, new routes with no auth middleware found (heuristic), and middleware aliases remapped. | A URI, prefix or include path is dynamic, or routes are registered outside `routes/` (named with file and line). |
+| migrations | Tables and columns created, dropped, renamed and retyped, NOT NULL additions and tightened nullability, indexes, foreign keys and cascades, data migrations, edits to shipped migrations. Each operation is categorised as destructive, structural or data. | Raw SQL, non-literal table names, helpers it can't follow. |
+| dependencies | Direct packages added, removed, upgraded (major flagged) or downgraded; install scripts; source moves (registry, git, path, host); real replacements; overrides and resolutions; **vendored code edited without a lockfile change**. | A lockfile can't be read, constraints changed without the lockfile, or a required package is missing from the lockfile. |
+| workflows | Action and reusable-workflow references with SHA pinning; triggers added (privileged ones flagged); permissions widened; new secrets; untrusted `${{ github.event.* }}` in shell (heuristic); a privileged workflow referencing PR code (heuristic); release workflows changed. | Tab indentation or several YAML documents. |
 
-Routes registered by service providers or packages are outside coverage, and the results say so.
+[`docs/extractors.md`](docs/extractors.md) has each extractor's inputs, outputs, UNKNOWN conditions and what it doesn't establish.
 
 ## Policy
 
