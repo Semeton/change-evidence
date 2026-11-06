@@ -2,6 +2,18 @@
   "name": "laravel-default",
   "version": 4,
   "description": "Default risk policy for Laravel applications. Rules only escalate; nothing here lowers a tier. Pattern rules over diff lines are heuristics and are labelled as such in results. Policies, middleware, routes and migrations are matched in standard locations and in modular layouts (app/Modules/*, nwidart Modules/*).",
+  "calibration": [
+    {
+      "repository": "koel/koel",
+      "through": "2026-11-03",
+      "note": "policy v2 and v3 rules and thresholds were changed after studying this history"
+    },
+    {
+      "repository": "monicahq/monica",
+      "through": "2026-11-03",
+      "note": "policy v2 and v3 rules and thresholds were changed after studying this history"
+    }
+  ],
   "tiers": [
     "low",
     "medium",

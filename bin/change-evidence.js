@@ -46,7 +46,13 @@ Usage: change-evidence <command> [options]
       out of date. Run it with the latest CLI: npx @semeton/change-evidence@latest upgrade
 
   study <repo> [--out DIR] [--since DATE] [--limit N] [--policy FILE] [--followup-days N] [--ref REF]
-      Replay merged PRs; write study.csv, study.json and summary.md.
+               [--holdout 0.3] [--repository owner/name]
+               [--export-sample FILE [--sample 60] [--seed 1]] [--labels FILE [--labels-key FILE]]
+      Replay merged PRs; write study.csv, study.json and summary.md: precision, recall,
+      false-positive and false-negative rates and capture at fixed budgets, each with a
+      Wilson 95% interval, for a strict and an inclusive proxy label, over a chronological
+      development/holdout split. --export-sample writes a blind, tier-stratified sample for
+      human labelling (and a key to keep back); --labels reads it back and compares.
 
   change <repo> <base> <head> [--policy FILE]
       Evidence and risk for one diff, as JSON.
@@ -276,20 +282,49 @@ async function main(argv) {
     const cwd = repoDir(repo);
     const out = path.resolve(opt.out || "change-evidence-study");
     fs.mkdirSync(out, { recursive: true });
+    const holdout = opt.holdout === undefined ? 0.3 : Number(opt.holdout);
+    if (!(holdout >= 0 && holdout < 1)) {
+      console.error("--holdout is the share of the latest PRs to hold out, between 0 and 1");
+      return 2;
+    }
+    const policy = loadPolicy(opt.policy);
     const started = Date.now();
     const study = runStudy(cwd, {
       ref: opt.ref || "HEAD",
       since: opt.since,
       limit: opt.limit ? Number(opt.limit) : undefined,
-      policy: loadPolicy(opt.policy),
+      policy,
       followupDays: opt["followup-days"] ? Number(opt["followup-days"]) : 14,
+      holdout,
+      repository: opt.repository,
       onProgress: process.stderr.isTTY ? (i, n) => process.stderr.write(`\r  ${i}/${n} PRs`) : undefined,
     });
     if (process.stderr.isTTY) process.stderr.write("\n");
+    study.policyRules = [...(policy.path_rules || []), ...(policy.deleted_path_rules || []), ...(policy.pattern_rules || [])].map((r) => r.id).concat(Object.keys(policy.evidence_rules || {}).map((k) => `evidence:${k}`));
+    const labels = require("../lib/labels");
+    const { labelFor } = require("../lib/outcomes");
+    let human = null;
+    if (opt.labels) {
+      const { labelled, key, problems } = labels.readLabels(path.resolve(opt.labels), study.rows, opt["labels-key"] ? path.resolve(opt["labels-key"]) : undefined);
+      human = { ...labels.assessLabels({ labelled, key }), question: key.question, problems };
+      const usable = labelled.filter((l) => l.judgement !== "unsure");
+      const tally = (pred) => ({ risky: usable.filter((l) => l.judgement === "risky" && pred(l.row)).length, fine: usable.filter((l) => l.judgement === "fine" && pred(l.row)).length });
+      human.agreement = {
+        "Tool: flagged": tally((r) => r.risk.tier !== "low"),
+        "Tool: low": tally((r) => r.risk.tier === "low"),
+        "Proxy (inclusive): positive": tally((r) => labelFor(r, "inclusive")),
+        "Proxy (inclusive): negative": tally((r) => !labelFor(r, "inclusive")),
+      };
+    }
     fs.writeFileSync(path.join(out, "study.csv"), toCsv(study.rows));
-    const json = { version: 1, ...study, rows: study.rows.map(({ body, ...r }) => r) };
+    const json = { version: 2, evaluator: VERSION, ...study, rows: study.rows.map(({ body, ...r }) => r) };
     fs.writeFileSync(path.join(out, "study.json"), JSON.stringify(json, null, 1));
-    fs.writeFileSync(path.join(out, "summary.md"), summarize(study));
+    fs.writeFileSync(path.join(out, "summary.md"), summarize(study, { human }));
+    if (opt["export-sample"]) {
+      const remote = study.repository ? `https://github.com/${study.repository}` : "";
+      const e = labels.exportSample(study.rows, path.resolve(opt["export-sample"]), { size: opt.sample ? Number(opt.sample) : 60, seed: opt.seed ? Number(opt.seed) : 1, repository: study.repository, policy: study.policy, url: remote });
+      console.log(`Blind sample of ${e.size} PRs → ${relPath(process.cwd(), e.file)} (give this to the labeller), key → ${relPath(process.cwd(), e.key)} (keep this back)`);
+    }
     console.log(`${study.rows.length} PRs in ${((Date.now() - started) / 1000).toFixed(0)}s → ${out}/{study.csv,study.json,summary.md}`);
     return 0;
   }
