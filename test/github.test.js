@@ -175,10 +175,17 @@ test("hostile same-repo PR: reported from git objects, nothing executes, report 
     assert.ok(!/(^|[^`])@octocat/.test(body.replace(/(`+)[^`]*?@octocat[^`]*?\1/g, "")), "an @mention escaped its code span");
     assert.ok(!/<img/i.test(prose), "raw HTML survived outside code");
     assert.ok(/`+[^`]*<img[^`]*`+/.test(body), "the hostile URI is shown, inert, inside code");
-    // Every table row keeps exactly its three columns: unescaped pipes (cell separators)
-    // number four per row, whatever the hostile names contained.
-    for (const row of body.split("\n").filter((l) => l.startsWith("|"))) {
-      assert.equal((row.match(/(?<!\\)\|/g) || []).length, 4, `table row was split: ${row}`);
+    // Every table row keeps its header's column count, whatever the hostile names held:
+    // a cell separator is a pipe preceded by an even number of backslashes.
+    const separators = (row) => (row.match(/(?:^|[^\\])(?:\\\\)*\|/g) || []).length;
+    let header = null;
+    for (const line of body.split("\n")) {
+      if (!line.startsWith("|")) {
+        header = null;
+        continue;
+      }
+      if (header === null) header = separators(line);
+      else assert.equal(separators(line), header, `table row was split: ${line}`);
     }
     assert.ok(!body.split("\n").some((l) => l.startsWith("|") && /Evil/.test(l)), "a table row was injected");
     assert.match(body, /without-global-scope/);

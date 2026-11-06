@@ -51,7 +51,13 @@ test("the PR report leads with rules and lists structural changes", () => {
   const { policy } = policyFor(t.dir, base);
   const result = analyseChange(t.dir, base, head, compile(policy));
   const md = renderPr({ result, base, head, policy, version: "0.0.0" });
-  assert.match(md, /^### 🔴 Change evidence: high risk/);
+  assert.match(md, /^### 🔴 Change evidence · review priority: high/);
+  assert.match(md, /because of Security \(`evidence:security_middleware_removed`\)/);
+  assert.match(md, /#### Where to look/);
+  assert.match(md, /#### Observed impact/);
+  assert.match(md, /\*\*Routes:\*\* 1 changed \(1 lost security middleware\)/);
+  assert.match(md, /#### Uncertainty and coverage/);
+  assert.match(md, /How the priority was decided/);
   assert.match(md, /security_middleware_removed/);
   assert.match(md, /✏️ `GET \/a` — middleware removed: auth/);
   assert.match(md, /shadow mode: reports only, never blocks/);

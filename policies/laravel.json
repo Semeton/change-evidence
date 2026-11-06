@@ -1,6 +1,6 @@
 {
   "name": "laravel-default",
-  "version": 3,
+  "version": 4,
   "description": "Default risk policy for Laravel applications. Rules only escalate; nothing here lowers a tier. Pattern rules over diff lines are heuristics and are labelled as such in results. Policies, middleware, routes and migrations are matched in standard locations and in modular layouts (app/Modules/*, nwidart Modules/*).",
   "tiers": [
     "low",
@@ -13,6 +13,25 @@
     "max_files": 40,
     "level": "medium"
   },
+  "generated": [
+    "public/build/**",
+    "public/hot",
+    "bootstrap/ssr/**",
+    "vendor/**",
+    "node_modules/**",
+    "**/*.min.js",
+    "**/*.min.css",
+    "**/*.map",
+    "composer.lock",
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "resources/js/actions/**",
+    "resources/js/routes/**",
+    "resources/js/wayfinder/**",
+    "_ide_helper*.php",
+    ".phpstorm.meta.php"
+  ],
   "path_rules": [
     {
       "id": "auth-config",

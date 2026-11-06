@@ -2,7 +2,20 @@
 
 ## [0.4.0]
 
-Security: the GitHub integration no longer uses `pull_request_target`. GitHub blocks that trigger by default in public repositories from December 2, 2026. `docs/security.md` has the threat model.
+Reports now separate observed impact from review priority. The GitHub integration no longer uses `pull_request_target`. GitHub blocks that trigger by default in public repositories from December 2, 2026. `docs/security.md` has the threat model.
+
+**Reports**
+
+- **Observed impact and review priority are separate.** The report opens with the priority and exactly which rules and dimensions decided it. A low result states that low is not a finding of safety. The remaining sections are *where to look*, *observed impact* (counts only), per-dimension evidence, *uncertainty and coverage*, and a full decision trace.
+- **Every finding has a kind:** `observed`, `heuristic`, `unknown` or `size`. Pattern matches and inferences are labelled heuristic and never described as confirmed problems.
+- **Traceability.** Pattern hits carry file, line and matched text, and the report shows `file:line`. The JSON adds `risk.contributors` and `risk.decided_by`.
+- **Generated and vendored files no longer count toward size:** `public/build`, `vendor`, `node_modules`, lockfiles, minified files, Wayfinder output, and the base's `linguist-generated`/`linguist-vendored` attributes. A PR's own `.gitattributes` is ignored. On lawyering PR #107 this takes 185 of 240 files out of the size count.
+- **Pattern rules take `unless`.** Excused matches are counted and reported.
+- **New tables collapse to one line** in the schema section.
+- **Fix: pattern rules silently stopped after the 400th file in a PR.** Diffs are now read in batches and every file is scanned.
+- Policy v4: `generated` defaults.
+
+**Security**
 
 - **Two workflows instead of one.** `change-evidence-trigger.yml` runs on `pull_request` with no permissions and does nothing. `change-evidence.yml` runs on `workflow_run`, from the default branch, and uses nothing the trigger run produced.
 - **New `github-report` command**, run by the reporter workflow:
