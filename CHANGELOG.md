@@ -4,6 +4,13 @@
 
 Reports now separate observed impact from review priority. The GitHub integration no longer uses `pull_request_target`. GitHub blocks that trigger by default in public repositories from December 2, 2026. `docs/security.md` has the threat model.
 
+**Issues #5, #6, #7**
+
+- **#5:** `suggest` decides each size threshold on its own. `max_files` is no longer tightened without `--budget` when only lines loosen (zap-scan-app: lines 800 → 1600, files stay at 40). `suggest` now also measures reviewable size, generated files excluded, the same way the size rule does.
+- **#6:** `study` applies the repository overlay committed at `--ref`, as `pr` does. `--overlay FILE` measures a local, uncommitted proposal, and `--no-overlay` uses the built-in policy alone. The summary names the overlay, warns that an overlay derived from this history is in-sample, and prints the commit where the development split ends. The new `suggest --ref` can derive an overlay from that commit without seeing the holdout.
+- **#7:** path rules take `"status": ["M","R","D"]`, so "a file that already existed was changed" can be expressed for any file type, such as an edited raw-SQL migration. A malformed `status` makes the rule fail as UNKNOWN, never pass.
+- **Fix:** compiled policies were cached on a property that `{ ...policy }` copies, so a spread or extended policy could be evaluated with the original's rules. The cache is now a `WeakMap`.
+
 **Policy, suggest and contracts**
 
 - **A policy-health section in the study summary:**

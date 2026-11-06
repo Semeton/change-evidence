@@ -162,3 +162,29 @@ test("sampling is seeded and stratified; CSV escapes spreadsheet formulas", () =
   assert.match(labels.toCsvRows([{ title: "=HYPERLINK(\"x\")" }]), /"'=HYPERLINK\(""x""\)"/);
   assert.deepEqual(labels.parseCsv('a,b\n"x, y","he said ""hi"""\r\n'), [{ a: "x, y", b: 'he said "hi"' }]);
 });
+
+test("study applies the committed overlay, a local one, or none (#6)", () => {
+  const t = repo();
+  t.commit("init", { "app/A.php": "<?php\n", ".change-evidence.json": JSON.stringify({ name: "committed", path_rules: [{ id: "a-rule", dimension: "security", level: "high", paths: ["app/A.php"] }] }) });
+  t.commit("feat: touch A (#1)", { "app/A.php": "<?php\n$a = 1;\n" });
+  t.commit("feat: touch A again (#2)", { "app/A.php": "<?php\n$a = 2;\n" });
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ce-ov-"));
+  const tiers = (out) => JSON.parse(fs.readFileSync(path.join(out, "study.json"), "utf8")).rows.map((r) => r.risk.tier);
+  const committed = path.join(dir, "committed");
+  assert.equal(run(["study", t.dir, "--out", committed]).status, 0);
+  assert.deepEqual(tiers(committed), ["high", "high"]);
+  assert.match(fs.readFileSync(path.join(committed, "summary.md"), "utf8"), /with the repository overlay `\.change-evidence\.json@[0-9a-f]+`/);
+  assert.match(fs.readFileSync(path.join(committed, "summary.md"), "utf8"), /The overlay is repository-specific/);
+  const none = path.join(dir, "none");
+  assert.equal(run(["study", t.dir, "--out", none, "--no-overlay"]).status, 0);
+  assert.deepEqual(tiers(none), ["low", "low"]);
+  assert.match(fs.readFileSync(path.join(none, "summary.md"), "utf8"), /built-in only/);
+  const local = path.join(dir, "local.json");
+  fs.writeFileSync(local, JSON.stringify({ name: "proposal", path_rules: [{ id: "b-rule", dimension: "data", level: "medium", paths: ["app/**"] }] }));
+  const proposed = path.join(dir, "proposed");
+  assert.equal(run(["study", t.dir, "--out", proposed, "--overlay", local]).status, 0);
+  assert.deepEqual(tiers(proposed), ["medium", "medium"]);
+  assert.match(fs.readFileSync(path.join(proposed, "summary.md"), "utf8"), /overlay `file:/);
+  fs.writeFileSync(local, "{ broken");
+  assert.equal(run(["study", t.dir, "--out", proposed, "--overlay", local]).status, 2);
+});

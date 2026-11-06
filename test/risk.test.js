@@ -38,7 +38,7 @@ test("a broken rule escalates instead of passing", () => {
   const bad = { ...policy, path_rules: [{ id: "boom", dimension: "security", level: "high", paths: ["x"] }] };
   const c = change(["x"]);
   Object.defineProperty(c.files, "filter", { value: () => { throw new Error("boom"); } });
-  const r = assess({ ...bad, __compiled: undefined }, c, []);
+  const r = assess(bad, c, []);
   assert.equal(r.dimensions.security, "medium");
   assert.match(r.hits[0].unknown, /rule failed/);
 });
@@ -47,4 +47,26 @@ test("bootstrap/app.php escalates only on middleware lines", () => {
   const edit = (added) => change(["bootstrap/app.php"], { "bootstrap/app.php": { added, removed: [] } });
   assert.equal(assess(policy, edit(["    ->withExceptions(function (Exceptions $e) {"]), []).tier, "low");
   assert.equal(assess(policy, edit(["        $middleware->validateCsrfTokens(except: ['hook/*']);"]), []).dimensions.security, "high");
+});
+
+test("path rules can be limited by file status: an edited shipped file, whatever its language (#7)", () => {
+  const p = { ...policy, path_rules: [...policy.path_rules, { id: "sql-migration-edited", dimension: "data", level: "high", paths: ["prisma/migrations/**/migration.sql"], status: ["M", "R", "D"] }] };
+  const added = assess(p, change([{ status: "A", path: "prisma/migrations/2_x/migration.sql" }]), []);
+  assert.ok(!added.hits.some((h) => h.rule === "sql-migration-edited"), "a new migration isn't an edit");
+  const edited = assess(p, change([{ status: "M", path: "prisma/migrations/1_init/migration.sql" }]), []);
+  assert.equal(edited.dimensions.data, "high");
+  const renamed = assess(p, change([{ status: "R", path: "prisma/migrations/1b/migration.sql", from: "prisma/migrations/1_init/migration.sql" }]), []);
+  assert.ok(renamed.hits.some((h) => h.rule === "sql-migration-edited"));
+  // A malformed status makes the rule fail loudly (escalates as unknown), never silently pass.
+  const bad = { ...p, path_rules: [{ id: "bad", dimension: "data", level: "high", paths: ["x"], status: ["modified"] }] };
+  const r = assess(bad, change(["x"]), []);
+  assert.equal(r.hits[0].kind, "unknown");
+  assert.match(r.hits[0].unknown, /status must be a list/);
+});
+
+test("a spread copy of an assessed policy is evaluated with its own rules, not a stale cache", () => {
+  const base = JSON.parse(JSON.stringify(policy));
+  assess(base, change(["x.txt"]), []);
+  const extended = { ...base, path_rules: [...base.path_rules, { id: "x-rule", dimension: "security", level: "high", paths: ["x.txt"] }] };
+  assert.equal(assess(extended, change(["x.txt"]), []).dimensions.security, "high");
 });

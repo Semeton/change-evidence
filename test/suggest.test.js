@@ -56,3 +56,27 @@ test("size is tightened only when --budget is given", () => {
   const asked = suggest(t.dir, policy, { budget: 0.2, budgetGiven: true });
   assert.ok(asked.overlay.size.max_changed_lines < 800);
 });
+
+test("size thresholds are decided separately: files aren't tightened when only lines loosen (#5)", () => {
+  const t = repo();
+  t.commit("init", { "app/A.php": "<?php\n" });
+  // 30 PRs, each 2,000 lines in 2 files: lines loosen (default 800), files would tighten (default 40).
+  for (let i = 1; i <= 30; i++) t.commit(`feat: big ${i} (#${i})`, { [`app/F${i}.php`]: "x\n".repeat(1000), [`app/G${i}.php`]: "y\n".repeat(1000) });
+  const { policy } = policyFor(t.dir, "HEAD");
+  const quiet = suggest(t.dir, policy, { budget: 0.2 });
+  assert.ok(quiet.overlay.size.max_changed_lines > 800, "lines loosen");
+  assert.equal(quiet.overlay.size.max_files, undefined, "files must not tighten without --budget");
+  assert.match(quiet.notes.join("\n"), /size \(files\): .* no change suggested\. Pass --budget/);
+  const asked = suggest(t.dir, policy, { budget: 0.2, budgetGiven: true });
+  assert.ok(asked.overlay.size.max_files < 40, "with --budget, files tighten too");
+});
+
+test("suggest measures reviewable size, excluding generated files", () => {
+  const t = repo();
+  t.commit("init", { "app/A.php": "<?php\n" });
+  for (let i = 1; i <= 30; i++) t.commit(`feat: build ${i} (#${i})`, { [`public/build/assets/app${i}.js`]: "x\n".repeat(5000), [`app/F${i}.php`]: "<?php\n" });
+  const { policy } = policyFor(t.dir, "HEAD");
+  const s = suggest(t.dir, policy);
+  assert.ok(!s.overlay || !s.overlay.size, "5,000-line build bundles must not loosen the threshold");
+  assert.ok(s.size.median_lines < 10);
+});
