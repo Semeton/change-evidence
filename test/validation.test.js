@@ -67,7 +67,7 @@ function history() {
   t.g("checkout", "-q", "-b", "feature");
   t.commit("work on B", { "app/B.php": "<?php\nb3 broken\n" });
   t.g("checkout", "-q", "main");
-  require("child_process").execFileSync("git", ["-C", t.dir, "merge", "-q", "--no-ff", "feature", "-m", "Merge pull request #7 from me/feature\n\nImprove B"], { env: { ...process.env, GIT_CONFIG_GLOBAL: os.devNull, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t", GIT_AUTHOR_DATE: "2026-01-09T18:00:00Z", GIT_COMMITTER_DATE: "2026-01-09T18:00:00Z" } });
+  t.merge("feature", "Merge pull request #7 from me/feature\n\nImprove B", "2026-01-09T18:00:00Z");
   t.commit("fix: B (#8)", { "app/B.php": "<?php\nb3 fixed\n" });
   return { t, one };
 }

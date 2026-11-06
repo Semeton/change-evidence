@@ -47,6 +47,11 @@ function repo() {
       const tree = run(["write-tree"]);
       return execFileSync("git", ["-C", dir, "commit-tree", tree, "-p", parent, "-m", msg], { env: { ...ENV, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }, encoding: "utf8" }).trim();
     },
+    // A --no-ff merge with a fixed date, through the same isolated git config.
+    merge(branch, msg, date = `2026-01-${String(day++).padStart(2, "0")}T18:00:00Z`) {
+      execFileSync("git", ["-C", dir, "merge", "-q", "--no-ff", branch, "-m", msg], { env: { ...ENV, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }, timeout: 20000 });
+      return g("rev-parse", "HEAD");
+    },
     commit(msg, files = {}) {
       this.write(files);
       g("add", "-A");
